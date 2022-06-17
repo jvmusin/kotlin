@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.kapt3.base.KaptContext
 import org.jetbrains.kotlin.kapt3.base.doAnnotationProcessing
 import org.jetbrains.kotlin.kapt3.base.incremental.DeclaredProcType
 import org.jetbrains.kotlin.kapt3.base.incremental.IncrementalProcessor
+import org.jetbrains.kotlin.kapt3.base.javac.KaptJavaFileManager
 import org.jetbrains.kotlin.kapt3.base.util.KaptBaseError
 import org.jetbrains.kotlin.kapt3.base.util.WriterBackedKaptLogger
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -58,7 +59,12 @@ class JavaKaptContextTest {
         )
     }
 
-    private fun doAnnotationProcessing(javaSourceFile: File, processor: IncrementalProcessor, outputDir: File) {
+    private fun doAnnotationProcessing(
+        javaSourceFile: File,
+        processor: IncrementalProcessor,
+        outputDir: File,
+        fileAccessOutput: File? = null
+    ) {
         val options = KaptOptions.Builder().apply {
             projectBaseDir = javaSourceFile.parentFile
 
@@ -66,6 +72,8 @@ class JavaKaptContextTest {
             classesOutputDir = outputDir
             stubsOutputDir = outputDir
             incrementalDataOutputDir = outputDir
+
+            fileAccessHistoryReportFile = fileAccessOutput
 
             flags.add(KaptFlag.MAP_DIAGNOSTIC_LOCATIONS)
             detectMemoryLeaks = DetectMemoryLeaksMode.NONE
@@ -83,6 +91,26 @@ class JavaKaptContextTest {
             assertTrue(myMethodFile.exists())
         } finally {
             sourceOutputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun testDumpFileAccessHistory() {
+        val sourceOutputDir = Files.createTempDirectory("kaptRunner").toFile()
+        val fileAccessOutputFile = File.createTempFile("kapt_access_history", ".txt")
+        try {
+            doAnnotationProcessing(
+                File(TEST_DATA_DIR, "Simple.java"),
+                simpleProcessor(),
+                sourceOutputDir,
+                fileAccessOutput = fileAccessOutputFile
+            )
+            assertTrue(fileAccessOutputFile.exists())
+            assertTrue(fileAccessOutputFile.readText().contains("generated/MyMethodMyAnnotation.java"))
+            assertTrue(fileAccessOutputFile.readText().contains("java/lang/Enum.class"))
+        } finally {
+            sourceOutputDir.deleteRecursively()
+            fileAccessOutputFile.delete()
         }
     }
 
