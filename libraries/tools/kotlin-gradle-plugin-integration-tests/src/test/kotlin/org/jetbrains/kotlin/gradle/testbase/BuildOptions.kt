@@ -14,7 +14,9 @@ import org.jetbrains.kotlin.gradle.dsl.NativeCacheKind
 import org.jetbrains.kotlin.gradle.plugin.KotlinJsCompilerType
 import org.jetbrains.kotlin.gradle.report.BuildReportType
 import org.junit.jupiter.api.condition.OS
+import java.nio.file.Path
 import java.util.*
+import kotlin.io.path.absolutePathString
 
 data class BuildOptions(
     val logLevel: LogLevel = LogLevel.INFO,
@@ -45,6 +47,7 @@ data class BuildOptions(
     val useDaemonFallbackStrategy: Boolean = false,
     val verboseDiagnostics: Boolean = true,
     val nativeOptions: NativeOptions = NativeOptions(),
+    val konanDataDir: Path? = null,
 ) {
     val safeAndroidVersion: String
         get() = androidVersion ?: error("AGP version is expected to be set")
@@ -53,7 +56,7 @@ data class BuildOptions(
         val verbose: Boolean = false,
         val incrementalKapt: Boolean = false,
         val includeCompileClasspath: Boolean = false,
-        val classLoadersCacheSize: Int? = null
+        val classLoadersCacheSize: Int? = null,
     )
 
     data class JsOptions(
@@ -80,7 +83,7 @@ data class BuildOptions(
     )
 
     fun toArguments(
-        gradleVersion: GradleVersion
+        gradleVersion: GradleVersion,
     ): List<String> {
         val arguments = mutableListOf<String>()
         when (logLevel) {
@@ -188,6 +191,10 @@ data class BuildOptions(
             arguments.add("-Pkotlin.internal.verboseDiagnostics=$verboseDiagnostics")
         }
 
+        konanDataDir?.let {
+            arguments.add("-Pkonan.data.dir=${konanDataDir.absolutePathString()}")
+        }
+
         arguments.addAll(freeArgs)
 
         return arguments.toList()
@@ -236,7 +243,7 @@ data class BuildOptions(
 
 fun BuildOptions.suppressDeprecationWarningsOn(
     @Suppress("UNUSED_PARAMETER") reason: String, // just to require specifying a reason for suppressing
-    predicate: (BuildOptions) -> Boolean
+    predicate: (BuildOptions) -> Boolean,
 ) = if (predicate(this)) {
     copy(warningMode = WarningMode.Summary)
 } else {
@@ -246,7 +253,7 @@ fun BuildOptions.suppressDeprecationWarningsOn(
 fun BuildOptions.suppressDeprecationWarningsSinceGradleVersion(
     gradleVersion: String,
     currentGradleVersion: GradleVersion,
-    reason: String
+    reason: String,
 ) = suppressDeprecationWarningsOn(reason) {
     currentGradleVersion >= GradleVersion.version(gradleVersion)
 }
