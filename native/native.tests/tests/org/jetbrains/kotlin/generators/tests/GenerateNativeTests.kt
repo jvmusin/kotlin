@@ -304,6 +304,36 @@ fun main() {
                 }
             }
         }
+
+        // Header klib comparison tests
+        testGroup("native/native.tests/tests-gen", "native/native.tests/testData") {
+            testClass<AbstractNativeHeaderKlibCompareTest>(
+                suiteTestClassName = "NativeHeaderKlibCompareTestGenerated",
+            ) {
+                model("headerKlibs/compare", extension = null, recursive = false)
+            }
+            testClass<AbstractNativeHeaderKlibCompareTest>(
+                suiteTestClassName = "FirNativeHeaderKlibCompareTestGenerated",
+                annotations = listOf(*frontendFir()),
+            ) {
+                model("headerKlibs/compare", extension = null, recursive = false)
+            }
+        }
+
+        // Header klib compilation tests
+        testGroup("native/native.tests/tests-gen", "native/native.tests/testData") {
+            testClass<AbstractNativeHeaderKlibCompileTest>(
+                suiteTestClassName = "NativeHeaderKlibCompileTestGenerated",
+            ) {
+                model("headerKlibs/compile", extension = null, recursive = false)
+            }
+            testClass<AbstractNativeHeaderKlibCompileTest>(
+                suiteTestClassName = "FirNativeHeaderKlibCompileTestGenerated",
+                annotations = listOf(*frontendFir()),
+            ) {
+                model("headerKlibs/compile", extension = null, recursive = false)
+            }
+        }
     }
 }
 
