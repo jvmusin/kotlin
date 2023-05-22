@@ -63,6 +63,8 @@ abstract class BuildMetricsService : BuildService<BuildMetricsService.Parameters
         val projectName: Property<String>
         val kotlinVersion: Property<String>
         val buildConfigurationTags: ListProperty<StatTag>
+
+        val useExecutorForHttpReport: Property<Boolean>
     }
 
     private val log = Logging.getLogger(this.javaClass)
@@ -174,6 +176,8 @@ abstract class BuildMetricsService : BuildService<BuildMetricsService.Parameters
     companion object {
         private val serviceClass = BuildMetricsService::class.java
         private val serviceName = "${serviceClass.name}_${serviceClass.classLoader.hashCode()}"
+        private val log = Logging.getLogger(serviceClass)
+        private const val USE_EXECUTOR_FOR_HTTP = "kotlin.build.report.http.use.executor"
 
         private fun Parameters.toBuildReportParameters() = BuildReportParameters(
             startParameters = startParameters.get(),
@@ -183,7 +187,8 @@ abstract class BuildMetricsService : BuildService<BuildMetricsService.Parameters
             label = label.orNull,
             projectName = projectName.get(),
             kotlinVersion = kotlinVersion.get(),
-            additionalTags = HashSet(buildConfigurationTags.get())
+            additionalTags = HashSet(buildConfigurationTags.get()),
+            useExecutorForHttpReport = useExecutorForHttpReport.get()
         )
 
         private fun registerIfAbsentImpl(
@@ -203,6 +208,13 @@ abstract class BuildMetricsService : BuildService<BuildMetricsService.Parameters
 
             val kotlinVersion = project.getKotlinPluginVersion()
 
+            val useExecutorForHttpReport: Boolean = if (project.gradle.rootProject.hasProperty(USE_EXECUTOR_FOR_HTTP)) {
+                log.warn("${USE_EXECUTOR_FOR_HTTP} property for test purpose only")
+                (project.gradle.rootProject.property(USE_EXECUTOR_FOR_HTTP) as String).toBoolean()
+            } else {
+                false
+            }
+
             return project.gradle.sharedServices.registerIfAbsent(serviceName, serviceClass) {
                 it.parameters.label.set(reportingSettings.buildReportLabel)
                 it.parameters.projectName.set(project.rootProject.name)
@@ -217,10 +229,12 @@ abstract class BuildMetricsService : BuildService<BuildMetricsService.Parameters
                             httpSettings.password
                         )
                     )
-                }
+                    log.debug("Http report is enabled for ${httpSettings.url}")
+                } ?: log.debug("Http report is disabled")
                 it.parameters.projectDir.set(project.rootProject.layout.projectDirectory)
                 //init gradle tags for build scan and http reports
                 it.parameters.buildConfigurationTags.value(setupTags(project.gradle))
+                it.parameters.useExecutorForHttpReport.set(useExecutorForHttpReport)
             }.also {
                 subscribeForTaskEvents(project, it)
             }

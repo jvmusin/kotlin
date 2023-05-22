@@ -20,7 +20,7 @@ class HttpReportService(
     private val user: String?,
 ) : Serializable {
 
-    private var invalidUrl = false
+    private var unableToSendHttpRequest = false
     private var requestPreviousFailed = false
 
     private fun checkResponseAndLog(connection: HttpURLConnection, log: KotlinLogger) {
@@ -37,15 +37,16 @@ class HttpReportService(
     }
 
     fun sendData(data: Any, log: KotlinLogger) {
+        log.debug("Http report: send data $data")
         val elapsedTime = measureTimeMillis {
-            if (invalidUrl) {
+            if (unableToSendHttpRequest) {
                 return
             }
             val connection = try {
                 URL(url).openConnection() as HttpURLConnection
             } catch (e: IOException) {
-                log.warn("Unable to open connection to ${url}: ${e.message}")
-                invalidUrl = true
+                log.warn("Http report: Unable to open connection to ${url}: ${e.message}")
+                unableToSendHttpRequest = true
                 return
             }
 
@@ -65,8 +66,8 @@ class HttpReportService(
                 connection.connect()
                 checkResponseAndLog(connection, log)
             } catch (e: Exception) {
-                log.warn("Unexpected exception happened ${e.message}: ${e.stackTrace}")
-                checkResponseAndLog(connection, log)
+                log.warn("Http report: Unexpected exception happened: '${e.message}': ${e.stackTraceToString()}")
+                unableToSendHttpRequest = true
             } finally {
                 connection.disconnect()
             }

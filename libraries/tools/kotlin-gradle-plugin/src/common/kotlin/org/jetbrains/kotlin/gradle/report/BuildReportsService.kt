@@ -38,7 +38,8 @@ class BuildReportsService {
 
     private val startTime = System.nanoTime()
     private val buildUuid = UUID.randomUUID().toString()
-    private val executorService: ExecutorService = Executors.newSingleThreadExecutor()
+
+    private val executorService = TaskExecutor()
 
     private val tags = LinkedHashSet<StatTag>()
     private var customValues = 0 // doesn't need to be thread-safe
@@ -50,7 +51,7 @@ class BuildReportsService {
     fun close(
         buildOperationRecords: Collection<BuildOperationRecord>,
         failureMessages: List<String>,
-        parameters: BuildReportParameters
+        parameters: BuildReportParameters,
     ) {
         val buildData = BuildExecutionData(
             startParameters = parameters.startParameters,
@@ -61,7 +62,9 @@ class BuildReportsService {
         val reportingSettings = parameters.reportingSettings
 
         reportingSettings.httpReportSettings?.also {
-            executorService.submit { reportBuildFinish(parameters) }
+            executorService.submit(parameters.useExecutorForHttpReport) {
+                reportBuildFinish(parameters)
+            }
         }
         reportingSettings.fileReportSettings?.also {
             FileReportService.reportBuildStatInFile(
@@ -84,14 +87,14 @@ class BuildReportsService {
         }
 
         //It's expected that bad internet connection can cause a significant delay for big project
-        executorService.shutdown()
+        executorService.close()
     }
 
     private fun transformOperationRecordsToCompileStatisticsData(
         buildOperationRecords: Collection<BuildOperationRecord>,
         parameters: BuildReportParameters,
         onlyKotlinTask: Boolean,
-        metricsToShow: Set<String>? = null
+        metricsToShow: Set<String>? = null,
     ) = buildOperationRecords.mapNotNull {
         prepareData(
             taskResult = null,
@@ -111,13 +114,14 @@ class BuildReportsService {
 
     fun onFinish(
         event: TaskFinishEvent, buildOperation: BuildOperationRecord,
-        parameters: BuildReportParameters
+        parameters: BuildReportParameters,
     ) {
         addHttpReport(event, buildOperation, parameters)
     }
 
     private fun reportBuildFinish(parameters: BuildReportParameters) {
-        val httpReportSettings = parameters.reportingSettings.httpReportSettings ?: return
+        val httpReportSettings = parameters.reportingSettings.httpReportSettings
+            ?: return log.debug("Unable to send build finish event, httpReportSettings is null ")
 
         val branchName = if (httpReportSettings.includeGitBranchName) {
             val process = ProcessBuilder("git", "rev-parse", "--abbrev-ref", "HEAD")
@@ -161,7 +165,7 @@ class BuildReportsService {
     private fun addHttpReport(
         event: TaskFinishEvent,
         buildOperationRecord: BuildOperationRecord,
-        parameters: BuildReportParameters
+        parameters: BuildReportParameters,
     ) {
         parameters.httpService?.also { httpService ->
             val data =
@@ -175,20 +179,23 @@ class BuildReportsService {
                     onlyKotlinTask = true,
                     parameters.additionalTags
                 )
-            data?.also {
-                executorService.submit {
+
+            executorService.submit(parameters.useExecutorForHttpReport) {
+                data?.also {
                     httpService.sendData(data, loggerAdapter)
                 }
             }
+
         }
 
     }
+
 
     internal fun addBuildScanReport(
         event: TaskFinishEvent,
         buildOperationRecord: BuildOperationRecord,
         parameters: BuildReportParameters,
-        buildScanExtension: BuildScanExtensionHolder
+        buildScanExtension: BuildScanExtensionHolder,
     ) {
         val buildScanSettings = parameters.reportingSettings.buildScanReportSettings ?: return
 
@@ -211,7 +218,7 @@ class BuildReportsService {
     internal fun addBuildScanReport(
         buildOperationRecords: Collection<BuildOperationRecord>,
         parameters: BuildReportParameters,
-        buildScanExtension: BuildScanExtensionHolder
+        buildScanExtension: BuildScanExtensionHolder,
     ) {
         val buildScanSettings = parameters.reportingSettings.buildScanReportSettings ?: return
 
@@ -255,14 +262,14 @@ class BuildReportsService {
     private fun addBuildScanValue(
         buildScan: BuildScanExtensionHolder,
         data: GradleCompileStatisticsData,
-        customValue: String
+        customValue: String,
     ) {
         buildScan.buildScan.value(data.getTaskName(), customValue)
         customValues++
     }
 
     private fun reportTryK2ToConsole(
-        data: BuildExecutionData
+        data: BuildExecutionData,
     ) {
         val tasksData = data.buildOperationRecord
             .filterIsInstance<TaskRecord>()
@@ -417,5 +424,30 @@ data class BuildReportParameters(
     val label: String?,
     val projectName: String,
     val kotlinVersion: String,
-    val additionalTags: Set<StatTag>
+    val additionalTags: Set<StatTag>,
+
+    //use for test only
+    val useExecutorForHttpReport: Boolean,
 )
+
+private class TaskExecutor : AutoCloseable {
+    private val executorService: ExecutorService = Executors.newSingleThreadExecutor()
+    override fun close() {
+        //It's expected that bad internet connection can cause a significant delay for big project
+        executorService.shutdown()
+    }
+
+    internal fun submit(
+        useExecutor: Boolean,
+        action: () -> Unit,
+    ) {
+        if (useExecutor) {
+            executorService.submit {
+                action.invoke()
+            }
+        } else {
+            action.invoke()
+        }
+    }
+
+}
