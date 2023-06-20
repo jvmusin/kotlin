@@ -643,6 +643,82 @@ fun File.renderDiagnosticsStatistics(diagnosticsStatistics: DiagnosticsStatistic
 
 val KT_ISSUE_PATTERN = """KT-?\d+""".toRegex(RegexOption.IGNORE_CASE)
 
+fun recordCandidateForBoxTestIfNeeded(
+    test: File,
+    result: EquivalenceTestResult,
+    k2ContainsErrors: Boolean,
+    candidatesForAdditionalBoxTests: MutableList<File>,
+    candidatesForManualChecking: MutableList<File>,
+) {
+    val diagnosticsToCheckViaBoxTest = result.significantK1MetaInfo.filter {
+        it.tag in knownMissingDiagnostics && it.tag !in obsoleteIssues
+    }
+
+    if (diagnosticsToCheckViaBoxTest.isEmpty()) {
+        return
+    }
+
+    if (k2ContainsErrors) {
+        candidatesForManualChecking.add(test)
+        return
+    }
+
+    candidatesForAdditionalBoxTests.add(test)
+}
+
+fun generateAdditionalBoxTestsAndLogManuals(
+    projectDirectory: File,
+    candidatesForAdditionalBoxTests: List<File>,
+    candidatesForManualChecking: List<File>,
+) {
+    val status = StatusPrinter()
+    val nextIndexAfter = mutableMapOf<String, Int>()
+
+    fun nextNameFor(baseName: String): String {
+        val index = nextIndexAfter[baseName] ?: 0
+        val name = if (index > 0) "${baseName}_$index" else baseName
+        return name.also {
+            nextIndexAfter[baseName] = index + 1
+        }
+    }
+
+    for (it in candidatesForAdditionalBoxTests) {
+        val boxTestsDirectory = when {
+            "compiler/testData/diagnostics/testsWithJsStdLib" in it.path -> "js/js.translator/testData/box"
+            else -> "compiler/testData/codegen/box"
+        }
+
+        val k2DifferencesChecks = projectDirectory.child(boxTestsDirectory).child("k2DifferencesChecks")
+            .also { it.mkdirs() }
+        val name = nextNameFor(it.name.split(".").first())
+        val additionalTest = k2DifferencesChecks.child("$name.kt")
+        val text = it.readText()
+
+        when {
+            "fun box(): String?" in text -> additionalTest.writeText(
+                text.replace("fun box(): String?", "fun vox(): String?") + "\n\nfun box() = vox() ?: \"FAIL\"\n"
+            )
+            "fun box(): String" in text -> additionalTest.writeText(text)
+            else -> additionalTest.writeText("$text\n\nfun box() = \"OK\"\n")
+        }
+
+        status.loading("Regenerating ${it.path.removePrefix(projectDirectory.path)}")
+    }
+
+    status.done("Additional box tests generated")
+
+    if (candidatesForManualChecking.isEmpty()) {
+        return
+    }
+
+    status.done("The following tests contain other errors, so they have to be checked manually")
+    println("")
+
+    for ((index, it) in candidatesForManualChecking.withIndex()) {
+        println("- $index: ${it.path.removePrefix(projectDirectory.path)}")
+    }
+}
+
 fun main() {
     val projectDirectory = File(System.getProperty("user.dir"))
     val build = projectDirectory.child("compiler").child("k2-differences").child("build")
@@ -666,6 +742,9 @@ fun main() {
 
     val similarityStatistics = DiagnosticsStatistics()
     val containmentStatistics = DiagnosticsStatistics()
+
+    val candidatesForAdditionalBoxTests = mutableListOf<File>()
+    val candidatesForManualChecking = mutableListOf<File>()
 
     fun checkTest(
         testPath: String,
@@ -729,6 +808,11 @@ fun main() {
                 containmentStatistics.recordDiagnosticsStatistics(result)
                 logPossibleEquivalences(result, containment)
 
+                recordCandidateForBoxTestIfNeeded(
+                    test.analogousK2File, result, k2ContainsErrors = allK2MetaInfos.isNotEmpty(),
+                    candidatesForAdditionalBoxTests, candidatesForManualChecking,
+                )
+
                 KT_ISSUE_PATTERN.find(k2Text)?.groupValues?.first()?.let {
                     alongsideNonContainedTestsWithIssues[test] = it
                 }
@@ -771,6 +855,10 @@ fun main() {
             writer = writer,
         )
     }
+
+    generateAdditionalBoxTestsAndLogManuals(
+        projectDirectory, candidatesForAdditionalBoxTests, candidatesForManualChecking,
+    )
 
     val a = 10 + 1
     println("")
