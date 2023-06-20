@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/coroutines/suspendFunctionAsSupertype/kSuspendFunctionN/mixingSuspendAndNonSuspendSupertypesThruSuperinterface.fir.kt
+// WITH_STDLIB
 // !LANGUAGE: +SuspendFunctionAsSupertype
 // SKIP_TXT
 // DIAGNOSTICS: -CONFLICTING_INHERITED_MEMBERS, -CONFLICTING_OVERLOADS, -ABSTRACT_MEMBER_NOT_IMPLEMENTED, -ABSTRACT_CLASS_MEMBER_NOT_IMPLEMENTED

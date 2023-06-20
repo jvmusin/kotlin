@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/typealias/innerTypeAliasAsType.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNUSED_VARIABLE -UNUSED_PARAMETER -TOPLEVEL_TYPEALIASES_ONLY
 
 class Outer<T> {

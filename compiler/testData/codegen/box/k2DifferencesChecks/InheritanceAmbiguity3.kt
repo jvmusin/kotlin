@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/javac/inheritance/InheritanceAmbiguity3.fir.kt
+// WITH_STDLIB
 // FILE: a/i.java
 package a;
 

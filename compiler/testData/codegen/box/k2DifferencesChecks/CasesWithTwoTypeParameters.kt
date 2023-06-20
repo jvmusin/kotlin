@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/declarationChecks/finiteBoundRestriction/CasesWithTwoTypeParameters.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UPPER_BOUND_VIOLATED
 
 interface C0<T, S : C0<*, S>>

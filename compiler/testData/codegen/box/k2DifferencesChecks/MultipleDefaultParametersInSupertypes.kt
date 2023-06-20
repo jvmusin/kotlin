@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/override/MultipleDefaultParametersInSupertypes.fir.kt
+// WITH_STDLIB
 interface X {
     fun foo(a : Int = 1)
 }

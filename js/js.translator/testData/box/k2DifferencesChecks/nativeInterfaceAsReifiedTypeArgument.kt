@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/native/rtti/nativeInterfaceAsReifiedTypeArgument.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNUSED_PARAMETER
 
 inline fun <reified T> foo(x: T) {

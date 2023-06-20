@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/dynamicTypes/dynamicCastTarget.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -REDUNDANT_NULLABLE
 
 fun test(d: Any, dl: Collection<dynamic>) {

@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/jsCode/noJavaScriptProduced.fir.kt
+// WITH_STDLIB
 fun test() {
     js("")
     js(" ")

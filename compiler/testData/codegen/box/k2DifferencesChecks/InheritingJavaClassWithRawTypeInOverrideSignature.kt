@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/override/InheritingJavaClassWithRawTypeInOverrideSignature.fir.kt
+// WITH_STDLIB
 // FILE: A.java
 import java.util.List;
 

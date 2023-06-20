@@ -1,5 +1,7 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithStdLib/builderInference/inconsistentTypeInference.fir.kt
+// WITH_STDLIB
 // !RENDER_DIAGNOSTICS_FULL_TEXT
-// FIR_DUMP
+
 
 fun foo() {
     buildList {

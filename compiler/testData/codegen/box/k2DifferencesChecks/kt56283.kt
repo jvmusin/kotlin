@@ -1,5 +1,7 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/visibility/kt56283.fir.kt
+// WITH_STDLIB
 // SKIP_TXT
-// FIR_DUMP
+
 open class Base
 class Derived : Base()
 

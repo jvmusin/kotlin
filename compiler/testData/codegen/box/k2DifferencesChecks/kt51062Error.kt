@@ -1,3 +1,4 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/checkArguments/kt51062Error.fir.kt
 // WITH_STDLIB
 // FULL_JDK
 // !LANGUAGE: +ProgressionsChangingResolve -DisableCheckingChangedProgressionsResolve

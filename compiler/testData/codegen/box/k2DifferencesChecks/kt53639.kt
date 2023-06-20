@@ -1,3 +1,4 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/inference/builderInference/kt53639.fir.kt
 // WITH_STDLIB
 // SKIP_TXT
 fun <From, To> InputWrapper<From>.doMapping(

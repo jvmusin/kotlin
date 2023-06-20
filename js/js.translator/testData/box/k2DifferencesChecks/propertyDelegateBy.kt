@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/dynamicTypes/propertyDelegateBy.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNUSED_VARIABLE
 
 external val x: dynamic

@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/generics/protectedSuperCall.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNUSED_PARAMETER
 // FILE: GA.kt
 

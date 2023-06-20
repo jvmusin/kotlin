@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/RecursiveResolve.fir.kt
+// WITH_STDLIB
 class Test(foo: Any?, bar: Any?) {
     val foo = foo ?: this
     private val bar = bar ?: this

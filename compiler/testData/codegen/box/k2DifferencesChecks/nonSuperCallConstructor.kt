@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/scopes/protectedVisibility/nonSuperCallConstructor.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNUSED_PARAMETER
 
 open class A protected constructor(x: Int) {

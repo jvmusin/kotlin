@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/tests-spec/testData/diagnostics/notLinked/objects/inheritance/neg/7.fir.kt
+// WITH_STDLIB
 /*
  * KOTLIN DIAGNOSTICS NOT LINKED SPEC TEST (NEGATIVE)
  *
@@ -13,7 +15,7 @@ open class Foo(val prop: Int) {
 }
 
 fun vox(): String? {
-    if (<!SENSELESS_COMPARISON!>Foo.MyObject == null<!>) return null
+    if (Foo.MyObject == null) return null
 
     return "OK"
 }

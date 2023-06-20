@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/propertyAndMethodInImplementor.fir.kt
+// WITH_STDLIB
 package foo
 
 interface I {

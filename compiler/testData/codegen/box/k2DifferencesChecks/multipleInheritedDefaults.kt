@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/annotations/rendering/multipleInheritedDefaults.fir.kt
+// WITH_STDLIB
 // !RENDER_DIAGNOSTICS_MESSAGES
 // !DIAGNOSTICS: -ABSTRACT_MEMBER_NOT_IMPLEMENTED
 

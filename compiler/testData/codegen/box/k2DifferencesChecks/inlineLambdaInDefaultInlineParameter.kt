@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/inline/inlineLambdaInDefaultInlineParameter.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNUSED_EXPRESSION -UNUSED_PARAMETER -UNUSED_VARIABLE -NOTHING_TO_INLINE
 // !LANGUAGE: +InlineDefaultFunctionalParameters
 

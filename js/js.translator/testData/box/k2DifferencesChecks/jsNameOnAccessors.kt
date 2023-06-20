@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/jsNameOnAccessors.fir.kt
+// WITH_STDLIB
 package foo
 
 class A {

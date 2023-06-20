@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/javac/imports/NestedClassClash.fir.kt
+// WITH_STDLIB
 // SKIP_JAVAC
 // FILE: a/A.java
 package a;

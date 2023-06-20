@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/bridgeClash.fir.kt
+// WITH_STDLIB
 interface I {
     fun foo()
 }

@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/javac/typeParameters/Clash.fir.kt
+// WITH_STDLIB
 // FILE: a/x.java
 package a;
 

@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/methodAndMethod.fir.kt
+// WITH_STDLIB
 package foo
 
 fun bar(x: Int) = x

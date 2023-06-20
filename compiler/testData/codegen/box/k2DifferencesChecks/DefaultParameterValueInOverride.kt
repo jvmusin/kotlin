@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/override/DefaultParameterValueInOverride.fir.kt
+// WITH_STDLIB
 open class A {
     open fun foo(a : Int) {}
 }

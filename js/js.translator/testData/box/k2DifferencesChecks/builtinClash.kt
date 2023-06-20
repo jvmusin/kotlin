@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/builtinClash.fir.kt
+// WITH_STDLIB
 class C {
     class prototype
 

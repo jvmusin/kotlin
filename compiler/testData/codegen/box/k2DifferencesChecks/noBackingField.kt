@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/extensions/contextReceivers/noBackingField.fir.kt
+// WITH_STDLIB
 // !LANGUAGE: +ContextReceivers
 
 interface A {

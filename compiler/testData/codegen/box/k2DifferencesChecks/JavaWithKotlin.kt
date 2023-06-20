@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/declarationChecks/nonExpansiveInheritanceRestriction/JavaWithKotlin.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UPPER_BOUND_VIOLATED
 
 // FILE: D.java

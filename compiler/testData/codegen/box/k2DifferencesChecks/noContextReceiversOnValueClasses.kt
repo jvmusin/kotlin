@@ -1,3 +1,4 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/extensions/contextReceivers/noContextReceiversOnValueClasses.fir.kt
 // !LANGUAGE: +ContextReceivers, +ValueClasses
 // WITH_STDLIB
 // SKIP_TXT

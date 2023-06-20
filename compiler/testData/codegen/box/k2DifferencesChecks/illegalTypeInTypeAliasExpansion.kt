@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/typealias/illegalTypeInTypeAliasExpansion.fir.kt
+// WITH_STDLIB
 typealias A<T> = Array<T>
 typealias AA<T> = A<A<T>>
 

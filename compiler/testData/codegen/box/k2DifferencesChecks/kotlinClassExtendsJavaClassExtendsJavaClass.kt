@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJvmBackend/duplicateJvmSignature/statics/kotlinClassExtendsJavaClassExtendsJavaClass.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNUSED_PARAMETER
 
 // FILE: A.java

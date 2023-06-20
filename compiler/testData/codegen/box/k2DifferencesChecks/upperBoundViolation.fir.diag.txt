@@ -1,9 +1,0 @@
-/upperBoundViolation.kt:(108,115): error: Unresolved reference: println
-
-/upperBoundViolation.kt:(150,159): error: Unresolved reference: buildList
-
-/upperBoundViolation.kt:(207,210): error: Unresolved reference: add
-
-/upperBoundViolation.kt:(246,250): error: 'this' is not defined in this context
-
-/upperBoundViolation.kt:(250,253): error: No get method providing array access

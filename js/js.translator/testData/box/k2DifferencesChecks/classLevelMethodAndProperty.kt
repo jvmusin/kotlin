@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/classLevelMethodAndProperty.fir.kt
+// WITH_STDLIB
 package foo
 
 class A {

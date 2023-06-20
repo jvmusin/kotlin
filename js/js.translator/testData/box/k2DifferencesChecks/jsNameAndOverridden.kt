@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/jsNameAndOverridden.fir.kt
+// WITH_STDLIB
 package foo
 
 open class Super {

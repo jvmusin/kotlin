@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/inference/regressions/kt34029.fir.kt
+// WITH_STDLIB
 open class MyClass<T> {
     object MyObject : MyClass<Boolean>() { }
 }

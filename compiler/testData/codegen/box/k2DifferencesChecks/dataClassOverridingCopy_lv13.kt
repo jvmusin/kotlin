@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/dataClasses/dataClassOverridingCopy_lv13.fir.kt
+// WITH_STDLIB
 // !LANGUAGE: +ProhibitDataClassesOverridingCopy
 
 interface WithCopy<T> {

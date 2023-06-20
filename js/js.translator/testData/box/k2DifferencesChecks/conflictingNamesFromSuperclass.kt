@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/conflictingNamesFromSuperclass.fir.kt
+// WITH_STDLIB
 interface A {
     @JsName("foo") fun f()
 }

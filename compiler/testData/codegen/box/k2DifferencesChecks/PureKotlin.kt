@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/declarationChecks/nonExpansiveInheritanceRestriction/PureKotlin.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UPPER_BOUND_VIOLATED
 
 interface A<T>

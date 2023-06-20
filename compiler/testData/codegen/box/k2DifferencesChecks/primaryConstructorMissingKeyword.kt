@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/modifiers/primaryConstructorMissingKeyword.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNUSED_PARAMETER
 annotation class Ann(val x: Int = 1)
 class A private (val x: Int) {

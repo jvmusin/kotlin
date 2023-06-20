@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/packageAndProperty.fir.kt
+// WITH_STDLIB
 // FILE: foo.kt
 
 package foo

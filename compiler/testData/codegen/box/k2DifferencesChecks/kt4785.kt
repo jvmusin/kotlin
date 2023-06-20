@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/override/kt4785.fir.kt
+// WITH_STDLIB
 interface T {
     fun foo()
 }

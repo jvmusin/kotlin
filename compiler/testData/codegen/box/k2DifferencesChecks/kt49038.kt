@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/callableReference/kt49038.fir.kt
+// WITH_STDLIB
 fun take(arg: Any) {}
 
 fun <T> foo(a: A, t: T) {} // 1

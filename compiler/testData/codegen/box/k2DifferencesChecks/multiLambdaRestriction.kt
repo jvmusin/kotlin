@@ -1,3 +1,4 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/inference/builderInference/multiLambdaRestriction.fir.kt
 // WITH_STDLIB
 // SKIP_TXT
 

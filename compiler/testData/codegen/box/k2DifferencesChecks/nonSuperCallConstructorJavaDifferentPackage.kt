@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/scopes/protectedVisibility/nonSuperCallConstructorJavaDifferentPackage.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNUSED_PARAMETER
 
 // FILE: abc/A.java

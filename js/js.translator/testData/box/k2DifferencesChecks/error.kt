@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/jsCode/error.fir.kt
+// WITH_STDLIB
 val code = """
     var s = "hello"
     + );

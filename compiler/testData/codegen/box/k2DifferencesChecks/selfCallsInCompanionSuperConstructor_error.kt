@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/classObjects/selfCallsInCompanionSuperConstructor_error.fir.kt
+// WITH_STDLIB
 // !LANGUAGE: +ProhibitSelfCallsInNestedObjects
 // ISSUE: KT-25289
 

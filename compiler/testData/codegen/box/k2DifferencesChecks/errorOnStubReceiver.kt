@@ -1,5 +1,6 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/inference/builderInference/errorOnStubReceiver.fir.kt
 // WITH_STDLIB
-// FIR_DUMP
+
 // SKIP_TXT
 
 fun Any?.test() {}

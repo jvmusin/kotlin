@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/multiplatform/exhaustiveness/kt45796.fir.kt
+// WITH_STDLIB
 // ISSUE: KT-45796
 
 // MODULE: m1-common

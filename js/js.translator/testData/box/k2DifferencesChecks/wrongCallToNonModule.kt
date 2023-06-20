@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/module/wrongCallToNonModule.fir.kt
+// WITH_STDLIB
 // MODULE: m1
 // FILE: a.kt
 package foo

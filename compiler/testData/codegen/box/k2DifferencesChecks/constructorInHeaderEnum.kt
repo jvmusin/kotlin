@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/multiplatform/enum/constructorInHeaderEnum.fir.kt
+// WITH_STDLIB
 // MODULE: m1-common
 // FILE: common.kt
 

@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/extensions/contextReceivers/subtypingBetweenContextReceivers.fir.kt
+// WITH_STDLIB
 // !DIAGNOSTICS: -UNCHECKED_CAST
 // !LANGUAGE: +ContextReceivers
 

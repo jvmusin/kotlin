@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/tests/redeclarations/DuplicateParameterNamesInFunctionType.fir.kt
+// WITH_STDLIB
 fun test0(f: (String, String) -> Unit) {
     f("", "")
 }

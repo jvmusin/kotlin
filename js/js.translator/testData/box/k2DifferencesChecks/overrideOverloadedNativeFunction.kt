@@ -1,3 +1,5 @@
+// ORIGINAL: /compiler/testData/diagnostics/testsWithJsStdLib/name/overrideOverloadedNativeFunction.fir.kt
+// WITH_STDLIB
 external open class A {
     open fun f(x: Int): Unit
 
