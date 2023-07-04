@@ -225,6 +225,10 @@ val equivalentDiagnostics = listOf(
         "CANNOT_CHANGE_ACCESS_PRIVILEGE",
         "CANNOT_INFER_VISIBILITY",
     ),
+    listOf(
+        "ANNOTATION_IN_WHERE_CLAUSE_ERROR",
+        "ANNOTATION_IN_WHERE_CLAUSE_WARNING",
+    ),
 )
 
 val k2SpecificLanguageFeatures = listOf(
@@ -359,8 +363,9 @@ val MAGIC_DIAGNOSTICS_THRESHOLD = 80
 // no matches in K2. This means, if they do, then
 // the matching K2 error will be eliminated by
 // the algorithm.
-val k1WarningsMatchingK2Errors = setOf(
-    "INTEGER_OPERATOR_RESOLVE_WILL_CHANGE",
+val k1WarningsMatchingK2Errors = mapOf(
+    "INTEGER_OPERATOR_RESOLVE_WILL_CHANGE" to IssueInfo("25-2791259", 38895),
+//    "ANNOTATION_IN_WHERE_CLAUSE_WARNING" to IssueInfo("25-3281567", 46483),
 )
 
 val k1DefinitelyNonErrors = collectAllK1NonErrors() - k1WarningsMatchingK2Errors
@@ -672,7 +677,12 @@ fun logPossibleEquivalences(result: EquivalenceTestResult, writer: Writer) {
     }
 }
 
-fun printDiagnosticsStatistics(title: String? = null, diagnostics: Map<String, Set<File>>, writer: Writer) {
+fun printDiagnosticsStatistics(
+    title: String? = null,
+    diagnostics: Map<String, Set<File>>,
+    writer: Writer,
+    knownIssuesForDiagnostics: Map<String, IssueInfo> = emptyMap(),
+) {
     if (title != null) {
         writer.write("$title\n\n")
     }
@@ -682,7 +692,7 @@ fun printDiagnosticsStatistics(title: String? = null, diagnostics: Map<String, S
     for (it in sorted) {
         writer.write("- `${it.key}`: ${it.value.size} files")
 
-        val knownIssue = knownMissingDiagnostics[it.key]
+        val knownIssue = knownIssuesForDiagnostics[it.key]
 
         if (knownIssue != null) {
             val ticket = knownIssue.numberInProject
@@ -715,12 +725,14 @@ fun File.renderDiagnosticsStatistics(diagnosticsStatistics: DiagnosticsStatistic
             "Most common reasons of potential features (by the number of files) include:",
             diagnosticsStatistics.extractDisappearances(),
             writer,
+            knownDisappearedDiagnostics,
         )
         writer.write("\n")
         printDiagnosticsStatistics(
             "$MOST_COMMON_REASONS_OF_BREAKING_CHANGES (by the number of files) include:",
             diagnosticsStatistics.extractIntroductions(),
             writer,
+            knownIntroducedDiagnostics,
         )
     }
 }
@@ -1000,32 +1012,51 @@ fun updateMissingDiagnosticsTags(
     }
 }
 
-val knownDiagnosticIssues = knownMissingDiagnostics + knownDisappearedDiagnostics + knownIntroducedDiagnostics
-
 fun updateKnownIssuesDescriptions(statistics: DiagnosticsStatistics) {
     for ((diagnostic, filesToEntries) in statistics) {
-        val knownIssue = knownDiagnosticIssues[diagnostic] ?: continue
-
-        try {
-            val resolvedResult = getJson(
-                "https://youtrack.jetbrains.com/api/issues/${knownIssue.id}?fields=resolved",
-                API_HEADERS,
-            ).also(::println)
-
-            if ("\"resolved\":null" !in resolvedResult) {
-                continue
-            }
-
-            postJson(
-                "https://youtrack.jetbrains.com/api/issues/${knownIssue.id}?fields=id,resolved",
-                API_HEADERS,
-                mapOf(
-                    "description" to buildDiagnosticStatisticsIssueDescription(filesToEntries),
-                ),
-            ).also(::println)
-        } catch (e: IOException) {
-            println(e)
+        knownMissingDiagnostics[diagnostic]?.let { knownIssue ->
+            updateIssueDescription(knownIssue, filesToEntries)
         }
+
+        knownDisappearedDiagnostics[diagnostic]?.let { knownIssue ->
+            val disappearancesOnly = filesToEntries
+                .filterValues { it.significantK1MetaInfo.isNotEmpty() }
+                .mapValues { EquivalenceTestResult(significantK1MetaInfo = it.value.significantK1MetaInfo) }
+            updateIssueDescription(knownIssue, disappearancesOnly)
+        }
+
+        knownIntroducedDiagnostics[diagnostic]?.let { knownIssue ->
+            val disappearancesOnly = filesToEntries
+                .filterValues { it.significantK2MetaInfo.isNotEmpty() }
+                .mapValues { EquivalenceTestResult(significantK2MetaInfo = it.value.significantK2MetaInfo) }
+            updateIssueDescription(knownIssue, disappearancesOnly)
+        }
+    }
+}
+
+fun updateIssueDescription(
+    knownIssue: IssueInfo,
+    filesToEntries: Map<File, EquivalenceTestResult>,
+) {
+    try {
+        val resolvedResult = getJson(
+            "https://youtrack.jetbrains.com/api/issues/${knownIssue.id}?fields=resolved",
+            API_HEADERS,
+        ).also(::println)
+
+        if ("\"resolved\":null" !in resolvedResult) {
+            return
+        }
+
+        postJson(
+            "https://youtrack.jetbrains.com/api/issues/${knownIssue.id}?fields=id,resolved",
+            API_HEADERS,
+            mapOf(
+                "description" to buildDiagnosticStatisticsIssueDescription(filesToEntries),
+            ),
+        ).also(::println)
+    } catch (e: IOException) {
+        println(e)
     }
 }
 
@@ -1072,21 +1103,25 @@ fun publishReports() {
     ).also(::println)
 }
 
+fun generateMissingDignosticsIssues() {
+
+}
+
 fun doNonLocalThings(
     containmentStatistics: DiagnosticsStatistics,
 ) {
 //    updateMissingDiagnosticsTags(containmentStatistics)
 
     updateKnownIssuesDescriptions(containmentStatistics)
-    publishReports()
-
-    postJson(
-        "https://youtrack.jetbrains.com/api/issues/${mainCompletenessIssueId.id}/comments?fields=id,author(name),text",
-        API_HEADERS,
-        mapOf(
-            "text" to status.outputCopy,
-        ),
-    ).also(::println)
+//    publishReports()
+//
+//    postJson(
+//        "https://youtrack.jetbrains.com/api/issues/${mainCompletenessIssueId.id}/comments?fields=id,author(name),text",
+//        API_HEADERS,
+//        mapOf(
+//            "text" to status.outputCopy,
+//        ),
+//    ).also(::println)
 }
 
 fun main() {
@@ -1220,8 +1255,10 @@ fun main() {
         )
 
         printDiagnosticsStatistics(
+            title = null,
             diagnostics = withKnownIssues.associate { it.key to it.value },
             writer = writer,
+            knownMissingDiagnostics,
         )
     }
 

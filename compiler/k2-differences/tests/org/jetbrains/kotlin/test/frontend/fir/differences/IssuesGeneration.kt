@@ -249,6 +249,12 @@ val knownMissingDiagnostics = mapOf(
     "UPPER_BOUND_VIOLATION_IN_CONSTRAINT" to IssueInfo("25-4537022", 59437),
     "OVERLOAD_RESOLUTION_AMBIGUITY_BECAUSE_OF_STUB_TYPES" to IssueInfo("25-4537023", 59438),
     "STUB_TYPE_IN_RECEIVER_CAUSES_AMBIGUITY" to IssueInfo("25-4537024", 59439),
+    "UNSUPPORTED_REFERENCES_TO_VARIABLES_AND_PARAMETERS" to IssueInfo("25-4612527", 59905),
+    "UNSUPPORTED_SEALED_FUN_INTERFACE" to IssueInfo("25-4612580", 59957),
+    "UNSUPPORTED_CLASS_LITERALS_WITH_EMPTY_LHS" to IssueInfo("25-4612594", 59971),
+    "UNSUPPORTED_SEALED_WHEN" to IssueInfo("25-4612614", 59990),
+    "UNSUPPORTED_INHERITANCE_FROM_JAVA_MEMBER_REFERENCING_KOTLIN_FUNCTION" to IssueInfo("25-4612624", 60000),
+    "UNSUPPORTED_SUSPEND_TEST" to IssueInfo("25-4612626", 60002),
 )
 
 val obsoleteIssues = listOf(
@@ -353,7 +359,6 @@ val knownDisappearedDiagnostics = mapOf(
     "NOTHING_TO_OVERRIDE" to IssueInfo("25-4612524", 59902),
     "DELEGATE_SPECIAL_FUNCTION_NONE_APPLICABLE" to IssueInfo("25-4612525", 59903),
     "NONE_APPLICABLE" to IssueInfo("25-4612526", 59904),
-    "UNSUPPORTED_REFERENCES_TO_VARIABLES_AND_PARAMETERS" to IssueInfo("25-4612527", 59905),
     "CAPTURED_VAL_INITIALIZATION" to IssueInfo("25-4612528", 59906),
     "RETURN_TYPE_MISMATCH" to IssueInfo("25-4612529", 59907),
     "RECURSIVE_TYPEALIAS_EXPANSION" to IssueInfo("25-4612530", 59908),
@@ -405,7 +410,6 @@ val knownDisappearedDiagnostics = mapOf(
     "REPEATED_MODIFIER" to IssueInfo("25-4612577", 59954),
     "INCOMPATIBLE_MODIFIERS" to IssueInfo("25-4612578", 59955),
     "INAPPLICABLE_OPERATOR_MODIFIER" to IssueInfo("25-4612579", 59956),
-    "UNSUPPORTED_SEALED_FUN_INTERFACE" to IssueInfo("25-4612580", 59957),
     "VARARG_OUTSIDE_PARENTHESES" to IssueInfo("25-4612581", 59958),
     "NO_RECEIVER_ALLOWED" to IssueInfo("25-4612582", 59959),
     "INVISIBLE_SETTER" to IssueInfo("25-4612583", 59960),
@@ -419,7 +423,6 @@ val knownDisappearedDiagnostics = mapOf(
     "MUST_BE_INITIALIZED" to IssueInfo("25-4612591", 59968),
     "UNSUPPORTED_CONTEXTUAL_DECLARATION_CALL" to IssueInfo("25-4612592", 59969),
     "NULLABLE_TYPE_IN_CLASS_LITERAL_LHS" to IssueInfo("25-4612593", 59970),
-    "UNSUPPORTED_CLASS_LITERALS_WITH_EMPTY_LHS" to IssueInfo("25-4612594", 59971),
     "EXPRESSION_EXPECTED_PACKAGE_FOUND" to IssueInfo("25-4612596", 59972),
     "INAPPLICABLE_LATEINIT_MODIFIER" to IssueInfo("25-4612597", 59973),
     "INAPPLICABLE_INFIX_MODIFIER" to IssueInfo("25-4612598", 59974),
@@ -438,7 +441,6 @@ val knownDisappearedDiagnostics = mapOf(
     "REIFIED_TYPE_FORBIDDEN_SUBSTITUTION" to IssueInfo("25-4612611", 59987),
     "TYPE_ARGUMENTS_NOT_ALLOWED" to IssueInfo("25-4612612", 59988),
     "ELSE_MISPLACED_IN_WHEN" to IssueInfo("25-4612613", 59989),
-    "UNSUPPORTED_SEALED_WHEN" to IssueInfo("25-4612614", 59990),
     "FORBIDDEN_VARARG_PARAMETER_TYPE" to IssueInfo("25-4612615", 59991),
     "KCLASS_WITH_NULLABLE_TYPE_PARAMETER_IN_SIGNATURE" to IssueInfo("25-4612616", 59992),
     "INCORRECT_LEFT_COMPONENT_OF_INTERSECTION" to IssueInfo("25-4612617", 59993),
@@ -448,9 +450,7 @@ val knownDisappearedDiagnostics = mapOf(
     "OPT_IN_USAGE_ERROR" to IssueInfo("25-4612621", 59997),
     "OPT_IN_MARKER_CAN_ONLY_BE_USED_AS_ANNOTATION_OR_ARGUMENT_IN_OPT_IN" to IssueInfo("25-4612622", 59998),
     "NO_SET_METHOD" to IssueInfo("25-4612623", 59999),
-    "UNSUPPORTED_INHERITANCE_FROM_JAVA_MEMBER_REFERENCING_KOTLIN_FUNCTION" to IssueInfo("25-4612624", 60000),
     "TYPE_INFERENCE_ONLY_INPUT_TYPES_ERROR" to IssueInfo("25-4612625", 60001),
-    "UNSUPPORTED_SUSPEND_TEST" to IssueInfo("25-4612626", 60002),
     "INVALID_CHARACTERS_NATIVE_ERROR" to IssueInfo("25-4612627", 60003),
     "CONTRACT_NOT_ALLOWED" to IssueInfo("25-4612628", 60004),
     "UNSAFE_INFIX_CALL" to IssueInfo("25-4612629", 60005),
@@ -501,6 +501,59 @@ val knownIntroducedDiagnostics = mapOf(
     "ASSIGN_OPERATOR_AMBIGUITY" to IssueInfo("25-4612721", 60047),
     "MISSING_EXCEPTION_IN_THROWS_ON_SUSPEND" to IssueInfo("25-4612722", 60048),
     "RETURN_IN_FUNCTION_WITH_EXPRESSION_BODY" to IssueInfo("25-4612723", 60049),
+    "UNRESOLVED_REFERENCE" to IssueInfo("25-4613504", 60056),
+    "UNSAFE_CALL" to IssueInfo("25-4613505", 60057),
+    "OVERLOAD_RESOLUTION_AMBIGUITY" to IssueInfo("25-4613506", 60058),
+    "VAL_REASSIGNMENT" to IssueInfo("25-4613507", 60059),
+    "UNRESOLVED_REFERENCE_WRONG_RECEIVER" to IssueInfo("25-4613508", 60060),
+    "NEW_INFERENCE_NO_INFORMATION_FOR_PARAMETER" to IssueInfo("25-4613509", 60061),
+    "UNINITIALIZED_VARIABLE" to IssueInfo("25-4613510", 60062),
+    "USAGE_IS_NOT_INLINABLE" to IssueInfo("25-4613511", 60063),
+    "NONE_APPLICABLE" to IssueInfo("25-4613513", 60064),
+    "UPPER_BOUND_VIOLATED" to IssueInfo("25-4613514", 60065),
+    "INFERRED_TYPE_VARIABLE_INTO_EMPTY_INTERSECTION_ERROR" to IssueInfo("25-4613515", 60066),
+    "RETURN_TYPE_MISMATCH" to IssueInfo("25-4613516", 60067),
+    "CONFLICTING_OVERLOADS" to IssueInfo("25-4613517", 60068),
+    "CANNOT_INFER_PARAMETER_TYPE" to IssueInfo("25-4613519", 60069),
+    "WRONG_ANNOTATION_TARGET" to IssueInfo("25-4613520", 60070),
+    "CONFLICTING_JVM_DECLARATIONS" to IssueInfo("25-4613521", 60071),
+    "UNSAFE_IMPLICIT_INVOKE_CALL" to IssueInfo("25-4613523", 60072),
+    "UNSUPPORTED" to IssueInfo("25-4613524", 60073),
+    "INVALID_IF_AS_EXPRESSION" to IssueInfo("25-4613525", 60074),
+    "ACTUAL_WITHOUT_EXPECT" to IssueInfo("25-4613526", 60075),
+    "NO_ACTUAL_FOR_EXPECT" to IssueInfo("25-4613527", 60076),
+    "TYPE_MISMATCH" to IssueInfo("25-4613528", 60077),
+    "PACKAGE_OR_CLASSIFIER_REDECLARATION" to IssueInfo("25-4613529", 60078),
+    "ABSTRACT_MEMBER_NOT_IMPLEMENTED" to IssueInfo("25-4613530", 60079),
+    "INVISIBLE_SETTER" to IssueInfo("25-4613531", 60080),
+    "OPT_IN_USAGE_ERROR" to IssueInfo("25-4613532", 60081),
+    "NO_ELSE_IN_WHEN" to IssueInfo("25-4613533", 60082),
+    "INVISIBLE_REFERENCE" to IssueInfo("25-4613534", 60083),
+    "DEPRECATION_ERROR" to IssueInfo("25-4613535", 60084),
+    "NO_VALUE_FOR_PARAMETER" to IssueInfo("25-4613536", 60085),
+    "AMBIGUOUS_ANONYMOUS_TYPE_INFERRED" to IssueInfo("25-4613537", 60086),
+    "SMARTCAST_IMPOSSIBLE" to IssueInfo("25-4613538", 60087),
+    "UNINITIALIZED_ENUM_COMPANION" to IssueInfo("25-4613539", 60088),
+    "ERROR_IN_CONTRACT_DESCRIPTION" to IssueInfo("25-4613540", 60089),
+    "DEPRECATED_PARCELER" to IssueInfo("25-4613541", 60090),
+    "REDECLARATION" to IssueInfo("25-4613542", 60091),
+    "EXPOSED_PROPERTY_TYPE_IN_CONSTRUCTOR_ERROR" to IssueInfo("25-4613543", 60092),
+    "RECURSIVE_TYPEALIAS_EXPANSION" to IssueInfo("25-4613544", 60093),
+    "NO_COMPANION_OBJECT" to IssueInfo("25-4613545", 60094),
+    "INCOMPATIBLE_TYPES" to IssueInfo("25-4613546", 60095),
+    "API_NOT_AVAILABLE" to IssueInfo("25-4613547", 60096),
+    "NOTHING_TO_OVERRIDE" to IssueInfo("25-4613548", 60097),
+    "DELEGATE_SPECIAL_FUNCTION_NONE_APPLICABLE" to IssueInfo("25-4613549", 60098),
+    "UNINITIALIZED_ENUM_ENTRY" to IssueInfo("25-4613550", 60099),
+    "MUST_BE_INITIALIZED" to IssueInfo("25-4613551", 60100),
+    "TOO_MANY_ARGUMENTS" to IssueInfo("25-4613552", 60101),
+    "REPEATED_ANNOTATION" to IssueInfo("25-4613555", 60102),
+    "UNSAFE_OPERATOR_CALL" to IssueInfo("25-4613558", 60103),
+    "FUNCTION_CALL_EXPECTED" to IssueInfo("25-4613559", 60104),
+    "UNDERSCORE_USAGE_WITHOUT_BACKTICKS" to IssueInfo("25-4613560", 60105),
+    "REIFIED_TYPE_FORBIDDEN_SUBSTITUTION" to IssueInfo("25-4613561", 60106),
+    "OPERATOR_MODIFIER_REQUIRED" to IssueInfo("25-4613562", 60107),
+    "EXTERNAL_ENUM_ENTRY_WITH_BODY" to IssueInfo("25-4613563", 60108),
 )
 
 object ArbitraryK2Differences {
@@ -515,6 +568,10 @@ object ArbitraryK2Differences {
 //            val existing = knownDisappearedDiagnostics[diagnostic] ?: continue
 //            existing.makeSubtaskOf(DISAPPEARED_DIAGNOSTICS_UMBRELLA.numberInProject)
 
+            if (diagnostic in knownMissingDiagnostics || diagnostic in knownDisappearedDiagnostics) {
+                continue
+            }
+
             generateTicketFor(
                 diagnostic, filesCount.toInt(),
                 title = "disappeared",
@@ -526,6 +583,13 @@ object ArbitraryK2Differences {
         for ((diagnostic, filesCount) in introducedDiagnostics) {
 //            val existing = knownIntroducedDiagnostics[diagnostic] ?: continue
 //            existing.makeSubtaskOf(INTRODUCED_DIAGNOSTICS_UMBRELLA.numberInProject)
+
+//            val disappearedIssue = knownDisappearedDiagnostics[diagnostic] ?: continue
+//            existing.relateTo(disappearedIssue.numberInProject)
+
+            if (diagnostic in knownMissingDiagnostics || diagnostic in knownIntroducedDiagnostics) {
+                continue
+            }
 
             generateTicketFor(
                 diagnostic, filesCount.toInt(),
@@ -543,10 +607,6 @@ object ArbitraryK2Differences {
         description: String,
         tags: List<String>,
     ) {
-        if (diagnostic in knownDiagnosticIssues) {
-            return
-        }
-
         print("$diagnostic :: ")
 
         postJson(
@@ -564,13 +624,13 @@ object ArbitraryK2Differences {
     }
 }
 
-fun IssueInfo.makeSubtaskOf(parentNumberInProject: Long) {
+fun IssueInfo.runCommand(query: String) {
     try {
         postJson(
             "https://youtrack.jetbrains.com/api/commands",
             API_HEADERS,
             mapOf(
-                "query" to "subtask of KT-$parentNumberInProject",
+                "query" to query,
                 "issues" to listOf(
                     mapOf(
                         "idReadable" to "KT-$numberInProject",
@@ -582,3 +642,6 @@ fun IssueInfo.makeSubtaskOf(parentNumberInProject: Long) {
         println(e.message)
     }
 }
+
+fun IssueInfo.makeSubtaskOf(parentNumberInProject: Long) = runCommand("subtask of KT-$parentNumberInProject")
+fun IssueInfo.relateTo(anotherNumberInProject: Long) = runCommand("relates to KT-$anotherNumberInProject")
