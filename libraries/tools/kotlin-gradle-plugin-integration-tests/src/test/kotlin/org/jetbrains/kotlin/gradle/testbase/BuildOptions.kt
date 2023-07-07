@@ -77,6 +77,7 @@ data class BuildOptions(
         val restrictedDistribution: Boolean? = null,
         val useXcodeMessageStyle: Boolean? = null,
         val version: String? = null,
+        val incremental: Boolean? = null,
     )
 
     fun toArguments(
@@ -229,6 +230,9 @@ data class BuildOptions(
         }
         nativeOptions.version?.let {
             arguments.add("-Pkotlin.native.version=${it}")
+        }
+        nativeOptions.incremental?.let {
+            arguments.add("-Pkotlin.incremental.native=${it}")
         }
 
     }
