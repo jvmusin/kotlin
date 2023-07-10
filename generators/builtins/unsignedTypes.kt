@@ -8,18 +8,16 @@ package org.jetbrains.kotlin.generators.builtins.unsigned
 import org.jetbrains.kotlin.generators.builtins.PrimitiveType
 import org.jetbrains.kotlin.generators.builtins.UnsignedType
 import org.jetbrains.kotlin.generators.builtins.convert
-import org.jetbrains.kotlin.generators.builtins.generateBuiltIns.BuiltInsGenerator
 import org.jetbrains.kotlin.generators.builtins.generateBuiltIns.BuiltInsSourceGenerator
-import org.jetbrains.kotlin.generators.builtins.numbers.primitives.*
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.BasePrimitivesGenerator
 import org.jetbrains.kotlin.generators.builtins.numbers.primitives.END_LINE
-import org.jetbrains.kotlin.generators.builtins.numbers.primitives.FileBuilder
-import org.jetbrains.kotlin.generators.builtins.numbers.primitives.file
+import org.jetbrains.kotlin.generators.builtins.printDoc
 import java.io.File
 import java.io.PrintWriter
 
 fun generateUnsignedTypes(
     targetDir: File,
-    generate: (File, (PrintWriter) -> BuiltInsGenerator) -> Unit
+    generate: (File, (PrintWriter) -> BuiltInsSourceGenerator) -> Unit
 ) {
     for (type in UnsignedType.values()) {
         generate(File(targetDir, "kotlin/${type.capitalized}.kt")) { UnsignedTypeGenerator(type, it) }
@@ -31,13 +29,10 @@ fun generateUnsignedTypes(
     }
 }
 
-open class UnsignedTypeGenerator(val type: UnsignedType, val out: PrintWriter) : BuiltInsGenerator {
+class UnsignedTypeGenerator(val type: UnsignedType, out: PrintWriter) : BuiltInsSourceGenerator(out) {
     val className = type.capitalized
     val storageType = type.asSigned.capitalized
-
-    override fun generate() {
-        out.println(generateFile().build())
-    }
+    val toStorageType = "to$storageType()"
 
     internal fun binaryOperatorDoc(operator: String, operand1: UnsignedType, operand2: UnsignedType): String = when (operator) {
         "floorDiv" ->
@@ -65,139 +60,94 @@ open class UnsignedTypeGenerator(val type: UnsignedType, val out: PrintWriter) :
         else -> BasePrimitivesGenerator.binaryOperatorDoc(operator, operand1.asSigned, operand2.asSigned)
     }
 
-    private fun generateFile(): FileBuilder {
-        return file {
-            generateClass()
-            generateExtensionConversions()
-        }.apply { this.modifyGeneratedFile() }
-    }
+    override fun generateBody() {
 
-    private fun FileBuilder.generateClass() {
-        val className = type.capitalized
+        out.println("import kotlin.experimental.*")
+        out.println("import kotlin.jvm.*")
+        out.println()
 
-        klass {
-            name = className
-            generateCompanionObject()
+        out.println("@SinceKotlin(\"1.5\")")
+        out.println("@WasExperimental(ExperimentalUnsignedTypes::class)")
+        out.println("@JvmInline")
+        out.println("public value class $className @kotlin.internal.IntrinsicConstEvaluation @PublishedApi internal constructor(@PublishedApi internal val data: $storageType) : Comparable<$className> {")
+        out.println()
+        out.println("""    companion object {
+        /**
+         * A constant holding the minimum value an instance of $className can have.
+         */
+        public const val MIN_VALUE: $className = $className(0)
 
-            generateCompareTo()
+        /**
+         * A constant holding the maximum value an instance of $className can have.
+         */
+        public const val MAX_VALUE: $className = $className(-1)
 
-            generateBinaryOperators()
-            generateUnaryOperators()
-            generateRangeTo()
-            generateRangeUntil()
+        /**
+         * The number of bytes used to represent an instance of $className in a binary form.
+         */
+        public const val SIZE_BYTES: Int = ${type.byteSize}
 
-            if (type == UnsignedType.UINT || type == UnsignedType.ULONG) {
-                generateBitShiftOperators()
-            }
+        /**
+         * The number of bits used to represent an instance of $className in a binary form.
+         */
+        public const val SIZE_BITS: Int = ${type.byteSize * 8}
+    }""")
 
-            generateBitwiseOperators()
+        generateCompareTo()
 
-            generateMemberConversions()
-            generateFloatingConversions()
+        generateBinaryOperators()
+        generateUnaryOperators()
+        generateRangeTo()
+        generateRangeUntil()
 
-            generateToStringHashCode()
-
-
-            isValue = true
-            parentList = mutableListOf("Comparable<$className>")
-
-            constructor {
-                visibility = "internal"
-                annotations += listOf("kotlin.internal.IntrinsicConstEvaluation", "PublishedApi")
-                param {
-                    name = "@PublishedApi internal val data"
-                    type = storageType
-                }
-            }
-        }.modifyGeneratedClass()
-    }
-
-    internal open fun FileBuilder.modifyGeneratedFile() {
-        import("kotlin.experimental.*")
-        import("kotlin.jvm.*")
-    }
-
-    internal open fun ClassBuilder.modifyGeneratedClass() {
-        annotations += listOf(
-            "SinceKotlin(\"1.5\")",
-            "WasExperimental(ExperimentalUnsignedTypes::class)",
-            "JvmInline"
-        )
-    }
-
-    internal open fun PropertyBuilder.modifyGeneratedCompanionObjectProperty() {}
-
-    private fun ClassBuilder.generateCompanionObject() {
-        companionObject {
-            property {
-                appendDoc("A constant holding the minimum value an instance of $className can have.")
-                name = "MIN_VALUE"
-                type = className
-                value = "$className(0)"
-            }.modifyGeneratedCompanionObjectProperty()
-
-            property {
-                appendDoc("A constant holding the maximum value an instance of $className can have.")
-                name = "MAX_VALUE"
-                type = className
-                value = "$className(-1)"
-            }.modifyGeneratedCompanionObjectProperty()
-
-            property {
-                appendDoc("The number of bytes used to represent an instance of $className in a binary form.")
-                name = "SIZE_BYTES"
-                type = "Int"
-                value = this@UnsignedTypeGenerator.type.byteSize.toString()
-            }.modifyGeneratedCompanionObjectProperty()
-
-            property {
-                appendDoc("The number of bits used to represent an instance of $className in a binary form.")
-                name = "SIZE_BITS"
-                type = "Int"
-                value = "${this@UnsignedTypeGenerator.type.byteSize * 8}"
-            }.modifyGeneratedCompanionObjectProperty()
+        if (type == UnsignedType.UINT || type == UnsignedType.ULONG) {
+            generateBitShiftOperators()
         }
+
+        generateBitwiseOperators()
+
+        generateMemberConversions()
+        generateFloatingConversions()
+
+        generateToStringHashCode()
+
+        out.println("}")
+        out.println()
+
+
+        generateExtensionConversions()
     }
 
-    internal open fun MethodBuilder.modifyGeneratedCompareTo(otherType: UnsignedType) {}
 
-    private fun ClassBuilder.generateCompareTo() {
+    private fun generateCompareTo() {
         for (otherType in UnsignedType.values()) {
-            val doc = """
-                    Compares this value with the specified value for order.
-                    Returns zero if this value is equal to the specified other value, a negative number if it's less than other,
-                    or a positive number if it's greater than other.
-                """.trimIndent()
-
-            method {
-                appendDoc(doc)
-                annotations += "kotlin.internal.InlineOnly"
-                if (otherType == type) annotations += "Suppress(\"OVERRIDE_BY_INLINE\")"
-                signature {
-                    isInline = true
-                    isOperator = true
-                    isOverride = otherType == type
-                    methodName = "compareTo"
-                    returnType = PrimitiveType.INT.capitalized
-                    parameter {
-                        name = "other"
-                        type = otherType.capitalized
-                    }
+            out.println("""
+    /**
+     * Compares this value with the specified value for order.
+     * Returns zero if this value is equal to the specified other value, a negative number if it's less than other,
+     * or a positive number if it's greater than other.
+     */""")
+            out.println("    @kotlin.internal.InlineOnly")
+            if (otherType == type)
+                out.println("""    @Suppress("OVERRIDE_BY_INLINE")""")
+            out.print("    public ")
+            if (otherType == type) out.print("override ")
+            out.print("inline operator fun compareTo(other: ${otherType.capitalized}): Int = ")
+            if (otherType == type && maxByDomainCapacity(type, UnsignedType.UINT) == type) {
+                out.println("${className.lowercase()}Compare(this.to${otherType.asSigned.capitalized}(), other.to${otherType.asSigned.capitalized}())")
+            } else {
+                if (maxOf(type, otherType) < UnsignedType.UINT) {
+                    out.println("this.toInt().compareTo(other.toInt())")
+                } else {
+                    val ctype = maxByDomainCapacity(type, otherType)
+                    out.println("${convert("this", type, ctype)}.compareTo(${convert("other", otherType, ctype)})")
                 }
-
-                when {
-                    otherType == type && maxByDomainCapacity(type, UnsignedType.UINT) == type -> "${className.lowercase()}Compare(this.data, other.data)"
-                    maxOf(type, otherType) < UnsignedType.UINT -> "this.toInt().compareTo(other.toInt())"
-                    else -> {
-                        val ctype = maxByDomainCapacity(type, otherType)
-                        "${convert("this", type, ctype)}.compareTo(${convert("other", otherType, ctype)})"
-                    }
-                }.addAsSingleLineBody()
-            }.modifyGeneratedCompareTo(otherType)
+            }
         }
+        out.println()
     }
 
-    private fun ClassBuilder.generateBinaryOperators() {
+    private fun generateBinaryOperators() {
         for (name in BasePrimitivesGenerator.binaryOperators) {
             generateOperator(name)
         }
@@ -205,449 +155,300 @@ open class UnsignedTypeGenerator(val type: UnsignedType, val out: PrintWriter) :
         generateFloorDivMod("mod")
     }
 
-    internal open fun MethodBuilder.modifyGeneratedBinaryOperation() {}
-
-    private fun ClassBuilder.generateOperator(operatorName: String) {
+    private fun generateOperator(name: String) {
         for (otherType in UnsignedType.values()) {
-            val opReturnType = getOperatorReturnType(type, otherType)
+            val returnType = getOperatorReturnType(type, otherType)
 
-            method {
-                appendDoc(binaryOperatorDoc(operatorName, type, otherType))
-                annotations += "kotlin.internal.InlineOnly"
-                signature {
-                    isInline = true
-                    isOperator = true
-                    methodName = operatorName
-                    returnType = opReturnType.capitalized
-                    parameter {
-                        name = "other"
-                        type = otherType.capitalized
-                    }
+            out.printDoc(binaryOperatorDoc(name, type, otherType), "    ")
+            out.println("    @kotlin.internal.InlineOnly")
+            out.print("    public inline operator fun $name(other: ${otherType.capitalized}): ${returnType.capitalized} = ")
+            if (type == otherType && type == returnType) {
+                when (name) {
+                    "plus", "minus", "times" -> out.println("$className(this.$toStorageType.$name(other.$toStorageType))")
+                    "div" -> out.println("${type.capitalized.lowercase()}Divide(this, other)")
+                    "rem" -> out.println("${type.capitalized.lowercase()}Remainder(this, other)")
+                    else -> error(name)
                 }
-
-                if (type == otherType && type == opReturnType) {
-                    when (operatorName) {
-                        "plus", "minus", "times" -> "$className(this.data.$operatorName(other.data))"
-                        "div" -> "${type.capitalized.lowercase()}Divide(this, other)"
-                        "rem" -> "${type.capitalized.lowercase()}Remainder(this, other)"
-                        else -> error(operatorName)
-                    }
-                } else {
-                    "${convert("this", type, opReturnType)}.$operatorName(${convert("other", otherType, opReturnType)})"
-                }.addAsSingleLineBody()
-            }.modifyGeneratedBinaryOperation()
+            } else {
+                out.println("${convert("this", type, returnType)}.$name(${convert("other", otherType, returnType)})")
+            }
         }
+        out.println()
     }
 
-    internal open fun MethodBuilder.modifyGeneratedFloorDivModOperator() {}
-
-    private fun ClassBuilder.generateFloorDivMod(operatorName: String) {
+    private fun generateFloorDivMod(name: String) {
         for (otherType in UnsignedType.values()) {
             val operationType = getOperatorReturnType(type, otherType)
-            val opReturnType = if (operatorName == "mod") otherType else operationType
+            val returnType = if (name == "mod") otherType else operationType
 
-            method {
-                appendDoc(binaryOperatorDoc(operatorName, type, otherType))
-                annotations += "kotlin.internal.InlineOnly"
-                signature {
-                    isInline = true
-                    methodName = operatorName
-                    returnType = opReturnType.capitalized
-                    parameter {
-                        name = "other"
-                        type = otherType.capitalized
-                    }
+            out.printDoc(binaryOperatorDoc(name, type, otherType), "    ")
+            out.println("    @kotlin.internal.InlineOnly")
+            out.print("    public inline fun $name(other: ${otherType.capitalized}): ${returnType.capitalized} = ")
+            if (type == otherType && type == operationType) {
+                when (name) {
+                    "floorDiv" -> out.println("div(other)")
+                    "mod" -> out.println("rem(other)")
+                    else -> error(name)
                 }
-
-                if (type == otherType && type == operationType) {
-                    when (operatorName) {
-                        "floorDiv" -> "div(other)"
-                        "mod" -> "rem(other)"
-                        else -> error(operatorName)
-                    }
-                } else {
+            } else {
+                out.println(
                     convert(
-                        "${convert("this", type, operationType)}.$operatorName(${convert("other", otherType, operationType)})",
-                        operationType, opReturnType
+                        "${convert("this", type, operationType)}.$name(${convert("other", otherType, operationType)})",
+                        operationType, returnType
                     )
-                }.addAsSingleLineBody()
-            }.modifyGeneratedFloorDivModOperator()
+                )
+            }
         }
+        out.println()
     }
 
-    internal open fun MethodBuilder.modifyGeneratedUnaryOperation() {}
 
-    private fun ClassBuilder.generateUnaryOperators() {
+    private fun generateUnaryOperators() {
         for (name in listOf("inc", "dec")) {
-            method {
-                appendDoc(BasePrimitivesGenerator.incDecOperatorsDoc(name))
-                annotations += "kotlin.internal.InlineOnly"
-                signature {
-                    isInline = true
-                    isOperator = true
-                    methodName = name
-                    returnType = className
-                }
-                "$className(data.$methodName())".addAsSingleLineBody()
-            }.modifyGeneratedUnaryOperation()
+            out.printDoc(BasePrimitivesGenerator.incDecOperatorsDoc(name), "    ")
+            out.println("    @kotlin.internal.InlineOnly")
+            out.println("    public inline operator fun $name(): $className = $className($toStorageType.$name())")
+            out.println()
         }
     }
 
-    internal open fun MethodBuilder.modifyGeneratedRangeTo() {}
-
-    private fun ClassBuilder.generateRangeTo() {
+    private fun generateRangeTo() {
         val rangeElementType = maxByDomainCapacity(type, UnsignedType.UINT)
         val rangeType = rangeElementType.capitalized + "Range"
         fun convert(name: String) = if (rangeElementType == type) name else "$name.to${rangeElementType.capitalized}()"
-
-        method {
-            appendDoc("Creates a range from this value to the specified [other] value.")
-            annotations += "kotlin.internal.InlineOnly"
-            signature {
-                isInline = true
-                isOperator = true
-                methodName = "rangeTo"
-                returnType = rangeType
-                parameter {
-                    name = "other"
-                    type = className
-                }
-            }
-            "$rangeType(${convert("this")}, ${convert("other")})".addAsSingleLineBody()
-        }.modifyGeneratedRangeTo()
+        out.println("    /** Creates a range from this value to the specified [other] value. */")
+        out.println("    @kotlin.internal.InlineOnly")
+        out.println("    public inline operator fun rangeTo(other: $className): $rangeType = $rangeType(${convert("this")}, ${convert("other")})")
+        out.println()
     }
 
-    internal open fun MethodBuilder.modifyGeneratedRangeUntil() {}
-
-    private fun ClassBuilder.generateRangeUntil() {
+    private fun generateRangeUntil() {
         val rangeElementType = maxByDomainCapacity(type, UnsignedType.UINT)
         val rangeType = rangeElementType.capitalized + "Range"
         fun convert(name: String) = if (rangeElementType == type) name else "$name.to${rangeElementType.capitalized}()"
-
-        method {
-            appendDoc(
-                """
-                   Creates a range from this value up to but excluding the specified [other] value.
-                   
-                   If the [other] value is less than or equal to `this` value, then the returned range is empty.
-               """.trimIndent()
-            )
-            annotations += listOf("SinceKotlin(\"1.9\")", "WasExperimental(ExperimentalStdlibApi::class)", "kotlin.internal.InlineOnly")
-
-            signature {
-                isInline = true
-                isOperator = true
-                methodName = "rangeUntil"
-                returnType = rangeType
-                parameter {
-                    name = "other"
-                    type = className
-                }
-            }
-            "${convert("this")} until ${convert("other")}".addAsSingleLineBody()
-        }.modifyGeneratedRangeUntil()
+        out.println("    /**")
+        out.println("     * Creates a range from this value up to but excluding the specified [other] value.")
+        out.println("     *")
+        out.println("     * If the [other] value is less than or equal to `this` value, then the returned range is empty.")
+        out.println("     */")
+        out.println("    @SinceKotlin(\"1.9\")")
+        out.println("    @WasExperimental(ExperimentalStdlibApi::class)")
+        out.println("    @kotlin.internal.InlineOnly")
+        out.println("    public inline operator fun rangeUntil(other: $className): $rangeType = ${convert("this")} until ${convert("other")}")
+        out.println()
     }
 
-    internal open fun MethodBuilder.modifyGeneratedBitShiftOperators() {}
 
-    private fun ClassBuilder.generateBitShiftOperators() {
-        fun ClassBuilder.generateShiftOperator(operatorName: String, implementation: String = operatorName) {
+    private fun generateBitShiftOperators() {
+
+        fun generateShiftOperator(name: String, implementation: String = name) {
             val doc = BasePrimitivesGenerator.shiftOperators[implementation]!!
             val detail = BasePrimitivesGenerator.shiftOperatorsDocDetail(type.asSigned)
-            method {
-                appendDoc(doc + END_LINE + END_LINE + detail)
-                annotations += "kotlin.internal.InlineOnly"
-                signature {
-                    isInfix = true
-                    isInline = true
-                    methodName = operatorName
-                    returnType = className
-                    parameter {
-                        name = "bitCount"
-                        type = PrimitiveType.INT.capitalized
-                    }
-                }
-                "$className(data $implementation bitCount)".addAsSingleLineBody()
-            }.modifyGeneratedBitShiftOperators()
+            out.printDoc(doc + END_LINE + END_LINE + detail, "    ")
+            out.println("    @kotlin.internal.InlineOnly")
+            out.println("    public inline infix fun $name(bitCount: Int): $className = $className($toStorageType $implementation bitCount)")
+            out.println()
         }
 
         generateShiftOperator("shl")
         generateShiftOperator("shr", "ushr")
     }
 
-    internal open fun MethodBuilder.modifyGeneratedBitwiseOperators(operatorName: String) {}
-
-    private fun ClassBuilder.generateBitwiseOperators() {
-        for ((operatorName, doc) in BasePrimitivesGenerator.bitwiseOperators) {
-            method {
-                appendDoc(doc)
-                annotations += "kotlin.internal.InlineOnly"
-                signature {
-                    isInfix = true
-                    isInline = true
-                    methodName = operatorName
-                    returnType = className
-                    parameter {
-                        name = "other"
-                        type = className
-                    }
-                }
-                "$className(this.data $operatorName other.data)".addAsSingleLineBody()
-            }.modifyGeneratedBitwiseOperators(operatorName)
+    private fun generateBitwiseOperators() {
+        for ((name, doc) in BasePrimitivesGenerator.bitwiseOperators) {
+            out.println("    /** $doc */")
+            out.println("    @kotlin.internal.InlineOnly")
+            out.println("    public inline infix fun $name(other: $className): $className = $className(this.$toStorageType $name other.$toStorageType)")
         }
-
-        method {
-            appendDoc("Inverts the bits in this value.")
-            annotations += "kotlin.internal.InlineOnly"
-            signature {
-                isInline = true
-                methodName = "inv"
-                returnType = className
-            }
-            "$className(data.inv())".addAsSingleLineBody()
-        }.modifyGeneratedBitwiseOperators("inv")
+        out.println("    /** Inverts the bits in this value. */")
+        out.println("    @kotlin.internal.InlineOnly")
+        out.println("    public inline fun inv(): $className = $className($toStorageType.inv())")
+        out.println()
     }
 
     private fun lsb(count: Int) = "least significant $count bits"
     private fun msb(count: Int) = "most significant $count bits"
 
-    internal open fun MethodBuilder.modifyGeneratedConversions(signedType: PrimitiveType) {}
-    internal open fun MethodBuilder.modifyGeneratedConversions(unsignedType: UnsignedType) {}
-
-    private fun ClassBuilder.generateMemberConversions() {
+    private fun generateMemberConversions() {
         for (otherType in UnsignedType.values()) {
-            val signedType = otherType.asSigned
-            val signed = signedType.capitalized
-            val docTitle = "Converts this [$className] value to [$signed]."
-            val docDescription = when {
-                otherType < type ->
-                    """
-                        If this value is less than or equals to [$signed.MAX_VALUE], the resulting `$signed` value represents
-                        the same numerical value as this `$className`.
-                        
-                        The resulting `$signed` value is represented by the ${lsb(otherType.bitSize)} of this `$className` value.
-                        Note that the resulting `$signed` value may be negative.
-                    """.trimIndent()
+            val signed = otherType.asSigned.capitalized
+
+            out.println("    /**\n     * Converts this [$className] value to [$signed].\n     *")
+            when {
+                otherType < type -> {
+                    out.println("     * If this value is less than or equals to [$signed.MAX_VALUE], the resulting `$signed` value represents")
+                    out.println("     * the same numerical value as this `$className`.")
+                    out.println("     *")
+                    out.println("     * The resulting `$signed` value is represented by the ${lsb(otherType.bitSize)} of this `$className` value.")
+                    out.println("     * Note that the resulting `$signed` value may be negative.")
+                }
                 otherType == type -> {
-                    """
-                        If this value is less than or equals to [$signed.MAX_VALUE], the resulting `$signed` value represents
-                        the same numerical value as this `$className`. Otherwise the result is negative.
-                        
-                        The resulting `$signed` value has the same binary representation as this `$className` value.
-                    """.trimIndent()
+                    out.println("     * If this value is less than or equals to [$signed.MAX_VALUE], the resulting `$signed` value represents")
+                    out.println("     * the same numerical value as this `$className`. Otherwise the result is negative.")
+                    out.println("     *")
+                    out.println("     * The resulting `$signed` value has the same binary representation as this `$className` value.")
                 }
                 else -> {
-                    """
-                        The resulting `$signed` value represents the same numerical value as this `$className`.
-                        
-                        The ${lsb(type.bitSize)} of the resulting `$signed` value are the same as the bits of this `$className` value,
-                        whereas the ${msb(otherType.bitSize - type.bitSize)} are filled with zeros.
-                    """.trimIndent()
+                    out.println("     * The resulting `$signed` value represents the same numerical value as this `$className`.")
+                    out.println("     *")
+                    out.println("     * The ${lsb(type.bitSize)} of the resulting `$signed` value are the same as the bits of this `$className` value,")
+                    out.println("     * whereas the ${msb(otherType.bitSize - type.bitSize)} are filled with zeros.")
                 }
             }
+            out.println("     */")
 
-            method {
-                appendDoc("$docTitle\n\n$docDescription")
-                annotations += "kotlin.internal.InlineOnly"
-                signature {
-                    isInline = true
-                    methodName = "to$signed"
-                    returnType = signed
-                }
-
-                when {
-                    otherType < type -> "data.to$signed()"
-                    otherType == type -> "data"
-                    else -> "data.to$signed() and ${type.mask}"
-                }.addAsSingleLineBody()
-            }.modifyGeneratedConversions(signedType)
+            out.println("    @kotlin.internal.InlineOnly")
+            out.print("    public inline fun to$signed(): $signed = ")
+            out.println(when {
+                type == UnsignedType.UINT && otherType == UnsignedType.ULONG -> "uintToLong($toStorageType)"
+                type == UnsignedType.UINT && otherType == UnsignedType.UINT -> "uintToInt(this)"
+                type == UnsignedType.ULONG && otherType == UnsignedType.ULONG -> "ulongToLong(this)"
+                otherType < type -> "$toStorageType.to$signed()"
+                otherType == type -> "data"
+                else -> "$toStorageType.to$signed() and ${type.mask}"
+            })
         }
+        out.println()
 
         for (otherType in UnsignedType.values()) {
             val name = otherType.capitalized
 
-            val docs = if (type == otherType)
-                "Returns this value."
+            if (type == otherType)
+                out.println("    /** Returns this value. */")
             else {
-                val title = "Converts this [$className] value to [$name]."
-                val description = when {
+                out.println("    /**\n     * Converts this [$className] value to [$name].\n     *")
+                when {
                     otherType < type -> {
-                        """
-                        If this value is less than or equals to [$name.MAX_VALUE], the resulting `$name` value represents
-                        the same numerical value as this `$className`.
-                        
-                        The resulting `$name` value is represented by the ${lsb(otherType.bitSize)} of this `$className` value.
-                        """.trimIndent()
+                        out.println("     * If this value is less than or equals to [$name.MAX_VALUE], the resulting `$name` value represents")
+                        out.println("     * the same numerical value as this `$className`.")
+                        out.println("     *")
+                        out.println("     * The resulting `$name` value is represented by the ${lsb(otherType.bitSize)} of this `$className` value.")
                     }
                     else -> {
-                        """
-                        The resulting `$name` value represents the same numerical value as this `$className`.
-                        
-                        The ${lsb(type.bitSize)} of the resulting `$name` value are the same as the bits of this `$className` value,
-                        whereas the ${msb(otherType.bitSize - type.bitSize)} are filled with zeros.
-                        """.trimIndent()
+                        out.println("     * The resulting `$name` value represents the same numerical value as this `$className`.")
+                        out.println("     *")
+                        out.println("     * The ${lsb(type.bitSize)} of the resulting `$name` value are the same as the bits of this `$className` value,")
+                        out.println("     * whereas the ${msb(otherType.bitSize - type.bitSize)} are filled with zeros.")
                     }
                 }
-
-                "$title\n\n$description"
+                out.println("     */")
             }
 
-            method {
-                appendDoc(docs)
-                annotations += "kotlin.internal.InlineOnly"
-                signature {
-                    isInline = true
-                    methodName = "to$name"
-                    returnType = name
-                }
-                when {
-                    otherType > type -> "${otherType.capitalized}(data.to${otherType.asSigned.capitalized}() and ${type.mask})"
-                    otherType == type -> "this"
-                    else -> "data.to${otherType.capitalized}()"
-                }.addAsSingleLineBody()
-            }.modifyGeneratedConversions(otherType)
+            out.println("    @kotlin.internal.InlineOnly")
+            out.print("    public inline fun to$name(): $name = ")
+            out.println(when {
+                type == UnsignedType.UINT && otherType == UnsignedType.ULONG -> "uintToULong($toStorageType)"
+                otherType > type -> "${otherType.capitalized}($toStorageType.to${otherType.asSigned.capitalized}() and ${type.mask})"
+                otherType == type -> "this"
+                else -> "$toStorageType.to${otherType.capitalized}()"
+            })
         }
+        out.println()
     }
 
-    internal open fun MethodBuilder.modifyGeneratedFloatingConversions() {}
-
-    private fun ClassBuilder.generateFloatingConversions() {
+    private fun generateFloatingConversions() {
         for (otherType in PrimitiveType.floatingPoint) {
             val otherName = otherType.capitalized
-            val docTitle = "Converts this [$className] value to [$otherName]."
-            val docDescription = if (type == UnsignedType.ULONG || type == UnsignedType.UINT && otherType == PrimitiveType.FLOAT) {
-                """
-                The resulting value is the closest `$otherName` to this `$className` value.
-                In case when this `$className` value is exactly between two `$otherName`s,
-                the one with zero at least significant bit of mantissa is selected.
-                """.trimIndent()
+
+            out.println("    /**\n     * Converts this [$className] value to [$otherName].\n     *")
+            if (type == UnsignedType.ULONG || type == UnsignedType.UINT && otherType == PrimitiveType.FLOAT) {
+                out.println("     * The resulting value is the closest `$otherName` to this `$className` value.")
+                out.println("     * In case when this `$className` value is exactly between two `$otherName`s,")
+                out.println("     * the one with zero at least significant bit of mantissa is selected.")
             } else {
-                "The resulting `$otherName` value represents the same numerical value as this `$className`."
+                out.println("     * The resulting `$otherName` value represents the same numerical value as this `$className`.")
             }
+            out.println("     */")
 
-            method {
-                appendDoc("$docTitle\n\n$docDescription")
-                annotations += "kotlin.internal.InlineOnly"
-                signature {
-                    isInline = true
-                    methodName = "to$otherName"
-                    returnType = otherName
-                }
-
-                when (type) {
-                    UnsignedType.UINT, UnsignedType.ULONG ->
-                        if (otherType == PrimitiveType.FLOAT) "this.toDouble().toFloat()" else className.lowercase() + "ToDouble(data)"
-                    else ->
-                        "this.toInt().to$otherName()"
-                }.addAsSingleLineBody()
-            }.modifyGeneratedFloatingConversions()
+            out.println("    @kotlin.internal.InlineOnly")
+            out.print("    public inline fun to$otherName(): $otherName = ")
+            when (type) {
+                UnsignedType.UINT, UnsignedType.ULONG ->
+                    out.println(className.lowercase() + "To$otherName($toStorageType)")
+                else ->
+                    out.println("uintTo$otherName(this.toInt())")
+            }
         }
+        out.println()
     }
 
-    internal open fun MethodBuilder.modifyGeneratedExtensionConversion(fromType: PrimitiveType) {}
-
-    private fun FileBuilder.generateExtensionConversions() {
+    private fun generateExtensionConversions() {
         for (otherType in UnsignedType.values()) {
             val otherSigned = otherType.asSigned.capitalized
             val thisSigned = type.asSigned.capitalized
 
-            val docTitle = "Converts this [$otherSigned] value to [$className]."
-            val docDescription = when {
+            out.println("/**\n * Converts this [$otherSigned] value to [$className].\n *")
+            when {
                 otherType < type -> {
-                    """
-                    If this value is positive, the resulting `$className` value represents the same numerical value as this `$otherSigned`.
-                    
-                    The ${lsb(otherType.bitSize)} of the resulting `$className` value are the same as the bits of this `$otherSigned` value,
-                    whereas the ${msb(type.bitSize - otherType.bitSize)} are filled with the sign bit of this value.
-                    """.trimIndent()
+                    out.println(" * If this value is positive, the resulting `$className` value represents the same numerical value as this `$otherSigned`.")
+                    out.println(" *")
+                    out.println(" * The ${lsb(otherType.bitSize)} of the resulting `$className` value are the same as the bits of this `$otherSigned` value,")
+                    out.println(" * whereas the ${msb(type.bitSize - otherType.bitSize)} are filled with the sign bit of this value.")
                 }
                 otherType == type -> {
-                    """
-                    If this value is positive, the resulting `$className` value represents the same numerical value as this `$otherSigned`.
-                    
-                    The resulting `$className` value has the same binary representation as this `$otherSigned` value.
-                    """.trimIndent()
+                    out.println(" * If this value is positive, the resulting `$className` value represents the same numerical value as this `$otherSigned`.")
+                    out.println(" *")
+                    out.println(" * The resulting `$className` value has the same binary representation as this `$otherSigned` value.")
                 }
                 else -> {
-                    """
-                    If this value is positive and less than or equals to [$className.MAX_VALUE], the resulting `$className` value represents
-                    the same numerical value as this `$otherSigned`.
-                    
-                    The resulting `$className` value is represented by the ${lsb(type.bitSize)} of this `$otherSigned` value.
-                    """.trimIndent()
+                    out.println(" * If this value is positive and less than or equals to [$className.MAX_VALUE], the resulting `$className` value represents")
+                    out.println(" * the same numerical value as this `$otherSigned`.")
+                    out.println(" *")
+                    out.println(" * The resulting `$className` value is represented by the ${lsb(type.bitSize)} of this `$otherSigned` value.")
                 }
             }
-
-            method {
-                appendDoc("$docTitle\n\n$docDescription")
-                annotations += listOf(
-                    "SinceKotlin(\"1.5\")",
-                    "WasExperimental(ExperimentalUnsignedTypes::class)",
-                    "kotlin.internal.InlineOnly"
-                )
-                signature {
-                    isInline = true
-                    extensionReceiver = otherSigned
-                    methodName = "to$className"
-                    returnType = className
-                }
-
-                when (otherType) {
-                    type -> "$className(this)"
+            out.println(" */")
+            out.println("@SinceKotlin(\"1.5\")")
+            out.println("@WasExperimental(ExperimentalUnsignedTypes::class)")
+            out.println("@kotlin.internal.InlineOnly")
+            out.print("public inline fun $otherSigned.to$className(): $className = ")
+            out.println(
+                when (type) {
+                    otherType -> when (type) {
+                        UnsignedType.UINT -> "intToUInt(this)"
+                        UnsignedType.ULONG -> "longToULong(this)"
+                        else -> "$className(this)"
+                    }
                     else -> "$className(this.to$thisSigned())"
-                }.addAsSingleLineBody()
-            }.modifyGeneratedExtensionConversion(otherType.asSigned)
+                }
+            )
         }
 
         if (type == UnsignedType.UBYTE || type == UnsignedType.USHORT)
             return // conversion from UByte/UShort to Float/Double is not allowed
 
+        out.println()
         for (otherType in PrimitiveType.floatingPoint) {
             val otherName = otherType.capitalized
 
-            method {
-                appendDoc("""
-                 Converts this [$otherName] value to [$className].
-                 
-                 The fractional part, if any, is rounded down towards zero.
-                 Returns zero if this `$otherName` value is negative or `NaN`, [$className.MAX_VALUE] if it's bigger than `$className.MAX_VALUE`.
-                """.trimIndent())
-
-                annotations += listOf(
-                    "SinceKotlin(\"1.5\")",
-                    "WasExperimental(ExperimentalUnsignedTypes::class)",
-                    "kotlin.internal.InlineOnly"
-                )
-
-                signature {
-                    isInline = true
-                    extensionReceiver = otherName
-                    methodName = "to$className"
-                    returnType = className
-                }
-
-                val conversion = if (otherType == PrimitiveType.DOUBLE) "" else ".toDouble()"
-                "doubleTo$className(this$conversion)".addAsSingleLineBody()
-            }.modifyGeneratedExtensionConversion(otherType)
+            out.println(
+                """
+                /**
+                 * Converts this [$otherName] value to [$className].
+                 *
+                 * The fractional part, if any, is rounded down towards zero.
+                 * Returns zero if this `$otherName` value is negative or `NaN`, [$className.MAX_VALUE] if it's bigger than `$className.MAX_VALUE`.
+                 */
+                """.trimIndent()
+            )
+            out.println("@SinceKotlin(\"1.5\")")
+            out.println("@WasExperimental(ExperimentalUnsignedTypes::class)")
+            out.println("@kotlin.internal.InlineOnly")
+            out.print("public inline fun $otherName.to$className(): $className = ")
+            out.println("${otherName.lowercase()}To$className(this)")
         }
     }
 
-    internal open fun MethodBuilder.modifyGeneratedToStringHashCode() {}
 
-    private fun ClassBuilder.generateToStringHashCode() {
-        method {
-            signature {
-                isOverride = true
-                methodName = "toString"
-                returnType = "String"
-            }
+    private fun generateToStringHashCode() {
+        out.print("    public override fun toString(): String = ")
+        when (type) {
+            UnsignedType.UBYTE, UnsignedType.USHORT -> out.println("toInt().toString()")
+            UnsignedType.UINT -> out.println("toLong().toString()")
+            UnsignedType.ULONG -> out.println("ulongToString($toStorageType)")
+        }
 
-            when (type) {
-                UnsignedType.UBYTE, UnsignedType.USHORT -> "toInt().toString()"
-                UnsignedType.UINT -> "toLong().toString()"
-                UnsignedType.ULONG -> "ulongToString(data)"
-            }.addAsSingleLineBody()
-        }.modifyGeneratedToStringHashCode()
+        out.println()
     }
 
 

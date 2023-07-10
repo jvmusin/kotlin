@@ -46,21 +46,10 @@ val commonMainSources by task<Sync> {
         "libraries/stdlib/unsigned/"
     )
 
-    val excluded = listOf(
-        // Reimplemented with Wasm specific types
-        "src/kotlin/UByte.kt",
-        "src/kotlin/UShort.kt",
-        "src/kotlin/UInt.kt",
-        "src/kotlin/ULong.kt",
-        "src/kotlin/UnsignedUtils.kt",
-    )
 
     sources.forEach { path ->
         from("$rootDir/$path") {
             into(path.dropLastWhile { it != '/' })
-            excluded.forEach {
-                exclude(it)
-            }
         }
     }
 

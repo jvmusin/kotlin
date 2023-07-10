@@ -10,7 +10,10 @@ import org.jetbrains.kotlin.generators.builtins.arrays.GenerateArrays
 import org.jetbrains.kotlin.generators.builtins.functions.GenerateFunctions
 import org.jetbrains.kotlin.generators.builtins.iterators.GenerateIterators
 import org.jetbrains.kotlin.generators.builtins.numbers.GenerateFloorDivMod
-import org.jetbrains.kotlin.generators.builtins.numbers.primitives.*
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.JsPrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.JvmPrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.NativePrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.WasmPrimitivesGenerator
 import org.jetbrains.kotlin.generators.builtins.progressionIterators.GenerateProgressionIterators
 import org.jetbrains.kotlin.generators.builtins.progressions.GenerateProgressions
 import org.jetbrains.kotlin.generators.builtins.ranges.GenerateRanges
@@ -84,7 +87,6 @@ fun generateBuiltIns(generate: (File, (PrintWriter) -> BuiltInsGenerator) -> Uni
     generate(File(STDLIB_DIR, "kotlin/util/FloorDivMod.kt")) { GenerateFloorDivMod(it) }
 
     generateUnsignedTypes(UNSIGNED_TYPES_DIR, generate)
-    generateWasmUnsignedTypes(BUILT_INS_NATIVE_DIR_WASM, generate)
 }
 
 fun main() {
