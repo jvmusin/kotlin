@@ -6,12 +6,14 @@
 package org.jetbrains.kotlin.fir.analysis.checkers.expression
 
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.checkForLocalRedeclarations
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 
 object FirConflictsExpressionChecker : FirBlockChecker() {
     override fun check(expression: FirBlock, context: CheckerContext, reporter: DiagnosticReporter) {
-        checkForLocalRedeclarations(expression.statements, context, reporter)
+        @Suppress("UNCHECKED_CAST")
+        checkForLocalRedeclarations(expression.statements as List<FirElement>, context, reporter)
     }
 }

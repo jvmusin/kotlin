@@ -2144,7 +2144,7 @@ open class PsiRawFirBuilder(
                     firTypeBuilder.annotations += annotationEntry.convert<FirAnnotation>()
                 }
             }
-            return firTypeBuilder.build()
+            return firTypeBuilder.build() as FirElement
         }
 
         private fun convertKtTypeElement(
@@ -2650,7 +2650,7 @@ open class PsiRawFirBuilder(
                         expression.right,
                     ) {
                         (this as KtExpression).toFirExpression("Incorrect expression in assignment: ${expression.text}")
-                    }
+                    } as FirElement
                 } else {
                     buildEqualityOperatorCall {
                         this.source = source
@@ -2910,7 +2910,7 @@ open class PsiRawFirBuilder(
                     ConeNotAnnotationContainer(rawResult?.render() ?: "???")
                 )
             expression.extractAnnotationsTo(result)
-            return result
+            return result as FirElement
         }
 
         override fun visitThrowExpression(expression: KtThrowExpression, data: FirElement?): FirElement {
