@@ -28,10 +28,13 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 import java.util.regex.Pattern
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.collections.HashSet
+import kotlin.io.path.absolutePathString
 import kotlin.io.path.isDirectory
 import kotlin.test.*
 
@@ -284,6 +287,7 @@ abstract class BaseGradleIT {
         val enableKpmModelMapping: Boolean? = null,
         val useDaemonFallbackStrategy: Boolean = false,
         val useVerboseDiagnosticsReporting: Boolean = true,
+        val konanDataDir: Path = Paths.get("build/.konan"),
     ) {
         val safeAndroidGradlePluginVersion: AGPVersion
             get() = androidGradlePluginVersion ?: error("AGP version is expected to be set")
@@ -950,6 +954,8 @@ abstract class BaseGradleIT {
             if (options.useVerboseDiagnosticsReporting) {
                 add("-Pkotlin.internal.verboseDiagnostics=true")
             }
+
+            add("-Pkonan.data.dir=${options.konanDataDir.absolutePathString()}")
 
             // Workaround: override a console type set in the user machine gradle.properties (since Gradle 4.3):
             add("--console=plain")
