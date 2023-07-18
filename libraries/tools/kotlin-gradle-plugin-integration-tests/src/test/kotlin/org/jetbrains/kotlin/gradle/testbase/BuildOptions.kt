@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinJsCompilerType
 import org.jetbrains.kotlin.gradle.report.BuildReportType
 import org.junit.jupiter.api.condition.OS
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 import kotlin.io.path.absolutePathString
 
@@ -47,7 +48,7 @@ data class BuildOptions(
     val useDaemonFallbackStrategy: Boolean = false,
     val verboseDiagnostics: Boolean = true,
     val nativeOptions: NativeOptions = NativeOptions(),
-    val konanDataDir: Path? = null,
+    val konanDataDir: Path? = Paths.get("build/.konan"),
 ) {
     val safeAndroidVersion: String
         get() = androidVersion ?: error("AGP version is expected to be set")
