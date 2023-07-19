@@ -10,12 +10,12 @@ dependencies {
     api(project(":kotlin-scripting-dependencies"))
 
     implementation("org.apache.maven:maven-core:3.9.3")
-    implementation("org.apache.maven.wagon:wagon-http:3.5.3")
-    implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.2")
-    implementation("org.apache.maven.resolver:maven-resolver-transport-file:1.9.2")
-    implementation("org.apache.maven.resolver:maven-resolver-transport-wagon:1.9.2")
-    implementation("org.apache.maven.resolver:maven-resolver-impl:1.9.2")
+    implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.13")
+    implementation("org.apache.maven.resolver:maven-resolver-transport-file:1.9.13")
+    implementation("org.apache.maven.resolver:maven-resolver-transport-http:1.9.13")
+    implementation("org.apache.maven.resolver:maven-resolver-impl:1.9.13")
     implementation("commons-io:commons-io:2.11.0")
+    implementation("com.google.inject:guice:5.1.0")
 
     testImplementation(projectTests(":kotlin-scripting-dependencies"))
     testImplementation(commonDependency("junit"))

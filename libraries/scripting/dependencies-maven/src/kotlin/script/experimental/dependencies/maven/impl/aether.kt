@@ -5,33 +5,23 @@
 
 package kotlin.script.experimental.dependencies.maven.impl
 
+import com.google.inject.Guice
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils
 import org.apache.maven.settings.Settings
-import org.apache.maven.wagon.Wagon
-import org.codehaus.plexus.DefaultContainerConfiguration
-import org.codehaus.plexus.DefaultPlexusContainer
-import org.codehaus.plexus.classworlds.ClassWorld
 import org.eclipse.aether.RepositorySystem
 import org.eclipse.aether.RepositorySystemSession
 import org.eclipse.aether.artifact.Artifact
 import org.eclipse.aether.collection.CollectRequest
 import org.eclipse.aether.collection.CollectResult
 import org.eclipse.aether.collection.DependencyCollectionException
-import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory
 import org.eclipse.aether.graph.Dependency
 import org.eclipse.aether.graph.DependencyFilter
-import org.eclipse.aether.internal.transport.wagon.PlexusWagonConfigurator
-import org.eclipse.aether.internal.transport.wagon.PlexusWagonProvider
 import org.eclipse.aether.repository.LocalRepository
 import org.eclipse.aether.repository.Proxy
 import org.eclipse.aether.repository.RemoteRepository
-import org.eclipse.aether.resolution.*
-import org.eclipse.aether.spi.connector.RepositoryConnectorFactory
-import org.eclipse.aether.spi.connector.transport.TransporterFactory
-import org.eclipse.aether.transport.file.FileTransporterFactory
-import org.eclipse.aether.transport.wagon.WagonConfigurator
-import org.eclipse.aether.transport.wagon.WagonProvider
-import org.eclipse.aether.transport.wagon.WagonTransporterFactory
+import org.eclipse.aether.resolution.ArtifactRequest
+import org.eclipse.aether.resolution.ArtifactResolutionException
+import org.eclipse.aether.resolution.ArtifactResult
 import org.eclipse.aether.util.filter.DependencyFilterUtils
 import org.eclipse.aether.util.graph.visitor.FilteringDependencyVisitor
 import org.eclipse.aether.util.graph.visitor.TreeDependencyVisitor
@@ -103,38 +93,11 @@ internal class AetherResolveSession(
         }
     }
 
-    private val repositorySystem: RepositorySystem by lazy {
-        val locator = MavenRepositorySystemUtils.newServiceLocator()
-        locator.addService(
-            RepositoryConnectorFactory::class.java,
-            BasicRepositoryConnectorFactory::class.java
-        )
-        locator.addService(
-            TransporterFactory::class.java,
-            FileTransporterFactory::class.java
-        )
-        locator.addService(
-            TransporterFactory::class.java,
-            WagonTransporterFactory::class.java
-        )
-
-        val container = DefaultPlexusContainer(DefaultContainerConfiguration().apply {
-            val realmId = "wagon"
-            classWorld = ClassWorld(realmId, Wagon::class.java.classLoader)
-            realm = classWorld.getRealm(realmId)
-        })
-
-        locator.setServices(
-            WagonProvider::class.java,
-            PlexusWagonProvider(container)
-        )
-        locator.setServices(
-            WagonConfigurator::class.java,
-            PlexusWagonConfigurator(container)
-        )
-
-        locator.getService(RepositorySystem::class.java)
+    private val injector by lazy {
+        Guice.createInjector(MavenResolverModule())
     }
+
+    private val repositorySystem by lazy { injector.getInstance(RepositorySystem::class.java) }
 
     private val repositorySystemSession: RepositorySystemSession by lazy {
         val localRepo = LocalRepository(localRepoPath)
