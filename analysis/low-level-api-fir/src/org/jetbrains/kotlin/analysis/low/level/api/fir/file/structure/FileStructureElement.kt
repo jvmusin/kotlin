@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.analysis.low.level.api.fir.file.structure
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.analysis.low.level.api.fir.LLFirModuleResolveComponents
@@ -18,7 +19,7 @@ import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.impl.FirErrorConstructor
 import org.jetbrains.kotlin.fir.declarations.impl.FirPrimaryConstructor
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.lazyResolveToPhase
 import org.jetbrains.kotlin.psi.*
@@ -61,6 +62,19 @@ internal sealed class ReanalyzableStructureElement<KT : KtDeclaration, S : FirBa
      */
     abstract fun reanalyze(): ReanalyzableStructureElement<KT, S>
 
+    internal fun inPlaceInBlockInvalidation() {
+        if (firSymbol.fir.resolvePhase == FirResolvePhase.BODY_RESOLVE) {
+            /**
+             * In-place invalidation is allowed only inside write action in exceptional cases.
+             * The right way to invalidate a declaration is [invalidateAfterInBlockModification]
+             */
+            ApplicationManager.getApplication().assertIsWriteThread()
+            doInBlockInvalidation()
+        }
+    }
+
+    protected abstract fun doInBlockInvalidation()
+
     fun isUpToDate(): Boolean = psi.getModificationStamp() == timestamp
 
     override val diagnostics = FileStructureElementDiagnostics(
@@ -77,20 +91,25 @@ internal sealed class ReanalyzableStructureElement<KT : KtDeclaration, S : FirBa
 internal class ReanalyzableFunctionStructureElement(
     firFile: FirFile,
     override val psi: KtNamedFunction,
-    firSymbol: FirFunctionSymbol<*>,
-    override val timestamp: Long,
+    firSymbol: FirNamedFunctionSymbol,
     moduleComponents: LLFirModuleResolveComponents,
-) : ReanalyzableStructureElement<KtNamedFunction, FirFunctionSymbol<*>>(firFile, firSymbol, moduleComponents) {
+) : ReanalyzableStructureElement<KtNamedFunction, FirNamedFunctionSymbol>(firFile, firSymbol, moduleComponents) {
+    override val timestamp: Long = psi.modificationStamp
+
     override val mappings = KtToFirMapping(firSymbol.fir, recorder)
 
-    override fun reanalyze(): ReanalyzableFunctionStructureElement {
-        firSymbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
+    override fun doInBlockInvalidation() {
+        firSymbol.fir.inBodyInvalidation()
+    }
 
+    override fun reanalyze(): ReanalyzableFunctionStructureElement {
+        inPlaceInBlockInvalidation()
+
+        firSymbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
         return ReanalyzableFunctionStructureElement(
             firFile,
             psi,
             firSymbol,
-            psi.modificationStamp,
             moduleComponents,
         )
     }
@@ -100,19 +119,49 @@ internal class ReanalyzablePropertyStructureElement(
     firFile: FirFile,
     override val psi: KtProperty,
     firSymbol: FirPropertySymbol,
-    override val timestamp: Long,
     moduleComponents: LLFirModuleResolveComponents,
 ) : ReanalyzableStructureElement<KtProperty, FirPropertySymbol>(firFile, firSymbol, moduleComponents) {
+    override val timestamp: Long = psi.modificationStamp
+    private val getterTimestamp: Long? = psi.getter?.modificationStamp
+    private val setterTimestamp: Long? = psi.setter?.modificationStamp
+
     override val mappings = KtToFirMapping(firSymbol.fir, recorder)
 
-    override fun reanalyze(): ReanalyzablePropertyStructureElement {
-        firSymbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
+    override fun doInBlockInvalidation() {
+        val property = firSymbol.fir
+        if (psi.getter?.modificationStamp != getterTimestamp) {
+            property.getter?.inBodyInvalidation()
+        }
 
+        if (psi.setter?.modificationStamp != setterTimestamp) {
+            property.setter?.inBodyInvalidation()
+        }
+
+        /**
+         * We should always invalidate property initializer
+         * because we can't separate an initialization modification
+         * from accessor modification if they're happening at the same time.
+         * Example:
+         * ```kotlin
+         * val i: Int = 4
+         *     get() {
+         *         return field.also { foo() }
+         *     }
+         * ```
+         * If between 2 [reanalyze] we will change 4 to 5 and `foo()` to `boo()` then we can't say
+         * by [timestamp] was initializer changed or not
+         */
+        property.inBodyInvalidation()
+    }
+
+    override fun reanalyze(): ReanalyzablePropertyStructureElement {
+        inPlaceInBlockInvalidation()
+
+        firSymbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
         return ReanalyzablePropertyStructureElement(
             firFile,
             psi,
             firSymbol,
-            psi.modificationStamp,
             moduleComponents,
         )
     }

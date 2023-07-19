@@ -30,7 +30,6 @@ internal object FileElementFactory {
             firFile,
             ktDeclaration,
             (firDeclaration as FirSimpleFunction).symbol,
-            ktDeclaration.modificationStamp,
             moduleComponents,
         )
 
@@ -40,7 +39,6 @@ internal object FileElementFactory {
             firFile,
             ktDeclaration,
             (firDeclaration as FirProperty).symbol,
-            ktDeclaration.modificationStamp,
             moduleComponents,
         )
 
