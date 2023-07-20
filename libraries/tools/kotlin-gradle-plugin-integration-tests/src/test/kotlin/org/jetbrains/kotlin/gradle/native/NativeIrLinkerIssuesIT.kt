@@ -310,7 +310,20 @@ internal class NativeIrLinkerIssuesIT : KGPBaseTest() {
                         }
                     }.joinToString("\n")
 
-                assertEquals(expectedErrorMessage(kotlinNativeCompilerVersion), errorMessage)
+                assertEquals(
+                    expectedErrorMessage(kotlinNativeCompilerVersion), errorMessage,
+                    """
+                    We expect:
+                    
+                    ${expectedErrorMessage(kotlinNativeCompilerVersion)}
+                    but get:
+                    
+                    ${errorMessage}
+                    
+                    Actual output is:
+                    $output
+                    """.trimIndent()
+                )
             }
         }
     }
