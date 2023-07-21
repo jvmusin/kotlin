@@ -1048,21 +1048,6 @@ class ControlFlowGraphBuilder {
         return node
     }
 
-    private fun addExceptionEdgesFrom(node: CFGNode<*>) {
-        if (!node.canThrow) return
-
-        val nextCatch = catchNodes.topOrNull()
-        if (!nextCatch.isNullOrEmpty() && nextCatch.first().level > levelOfNextExceptionCatchingGraph()) {
-            for (catchEnterNode in nextCatch) {
-                addEdge(node, catchEnterNode, propagateDeadness = false)
-            }
-        }
-        val nextFinally = finallyEnterNodes.topOrNull()
-        if (nextFinally != null && nextFinally.level > levelOfNextExceptionCatchingGraph()) {
-            addEdge(node, nextFinally, propagateDeadness = false, label = UncaughtExceptionPath)
-        }
-    }
-
     // Called-in-place function graphs are effectively inlined, exceptions go to enclosing function.
     private fun levelOfNextExceptionCatchingGraph(): Int =
         graphs.all().first { it.kind != ControlFlowGraph.Kind.AnonymousFunctionCalledInPlace }.exitNode.level
@@ -1177,7 +1162,23 @@ class ControlFlowGraphBuilder {
     }
 
     fun exitVariableAssignment(assignment: FirVariableAssignment): VariableAssignmentNode {
-        return createVariableAssignmentNode(assignment).also { addNewSimpleNode(it) }
+        val node = createVariableAssignmentNode(assignment).also { addNewSimpleNode(it) }
+
+        // Create edges from each assignment to any catch and/or finally blocks. Assignment is the only thing which can downgrade
+        // smart-casting, and exceptions can be thrown almost anywhere, so it is easier to track assignment than exceptions. This makes sure
+        // that any smart-cast downgrade which happens in a try block is recognized in catch and finally blocks.
+        val nextCatch = catchNodes.topOrNull()
+        if (!nextCatch.isNullOrEmpty() && nextCatch.first().level > levelOfNextExceptionCatchingGraph()) {
+            for (catchEnterNode in nextCatch) {
+                addEdge(node, catchEnterNode, propagateDeadness = false)
+            }
+        }
+        val nextFinally = finallyEnterNodes.topOrNull()
+        if (nextFinally != null && nextFinally.level > levelOfNextExceptionCatchingGraph()) {
+            addEdge(node, nextFinally, propagateDeadness = false, label = UncaughtExceptionPath)
+        }
+
+        return node
     }
 
     fun exitThrowExceptionNode(throwExpression: FirThrowExpression): ThrowExceptionNode {
@@ -1330,7 +1331,6 @@ class ControlFlowGraphBuilder {
     private fun addNewSimpleNode(node: CFGNode<*>, isDead: Boolean = false) {
         addEdge(lastNodes.pop(), node, preferredKind = if (isDead) EdgeKind.DeadForward else EdgeKind.Forward)
         lastNodes.push(node)
-        addExceptionEdgesFrom(node)
     }
 
     private fun addNonSuccessfullyTerminatingNode(node: CFGNode<*>) {
@@ -1338,7 +1338,6 @@ class ControlFlowGraphBuilder {
         val stub = createStubNode()
         addEdge(node, stub)
         lastNodes.push(stub)
-        addExceptionEdgesFrom(node)
     }
 
     private fun popAndAddEdge(to: CFGNode<*>, preferredKind: EdgeKind = EdgeKind.Forward) {
