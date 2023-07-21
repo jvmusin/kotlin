@@ -115,12 +115,17 @@ class StringTest {
     @Test
     fun toCharArray() {
         val s = "hello"
+        val destination = CharArray(5) { '.' }
         assertArrayContentEquals(charArrayOf('h', 'e', 'l', 'l', 'o'), s.toCharArray())
         assertArrayContentEquals(charArrayOf('e', 'l'), s.toCharArray(1, 3))
+        assertSame(destination, s.toCharArray(destination, 1, 1, 3))
+        assertArrayContentEquals(charArrayOf('.', 'e', 'l', '.', '.'), destination)
 
         assertFailsWith<IndexOutOfBoundsException> { s.toCharArray(-1) }
         assertFailsWith<IndexOutOfBoundsException> { s.toCharArray(0, 6) }
         assertFailsWith<IllegalArgumentException> { s.toCharArray(3, 1) }
+        assertFailsWith<IndexOutOfBoundsException> { s.toCharArray(destination, -1, 1, 3) }
+        assertFailsWith<IndexOutOfBoundsException> { s.toCharArray(destination, 4, 1, 3) }
 
         // Array modifications must not affect original string
         val a = s.toCharArray()
@@ -133,6 +138,11 @@ class StringTest {
             a13[i] = ' '
         }
         assertContentEquals(charArrayOf(' ', ' '), a13)
+        assertSame(destination, s.toCharArray(destination))
+        for (i in destination.indices) {
+            destination[i] = ' '
+        }
+        assertContentEquals(charArrayOf(' ', ' ', ' ', ' ', ' '), destination)
         assertEquals("hello", s)
     }
 
