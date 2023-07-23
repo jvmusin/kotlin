@@ -1,20 +1,16 @@
 /*
- * Copyright 2010-2022 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Copyright 2010-2023 JetBrains s.r.o. and Kotlin Programming Language contributors.
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
+
+// Auto-generated file. DO NOT EDIT!
 
 @file:Suppress("NOTHING_TO_INLINE")
 
 package kotlin
 
-/**
- * Represents a 64-bit signed integer.
- */
-public class Long internal constructor(
-    internal val low: Int,
-    internal val high: Int
-) : Number(), Comparable<Long> {
-
+/** Represents a 64-bit signed integer. */
+public class Long internal constructor(internal val low: Int, internal val high: Int) : Number(), Comparable<Long> {
     companion object {
         /**
          * A constant holding the minimum value an instance of Long can have.
@@ -105,11 +101,11 @@ public class Long internal constructor(
 
     /** Adds the other value to this value. */
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun plus(other: Float): Float = toFloat() + other
+    public inline operator fun plus(other: Float): Float = toFloat().plus(other)
 
     /** Adds the other value to this value. */
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun plus(other: Double): Double = toDouble() + other
+    public inline operator fun plus(other: Double): Double = toDouble().plus(other)
 
     /** Subtracts the other value from this value. */
     @kotlin.internal.IntrinsicConstEvaluation
@@ -129,11 +125,11 @@ public class Long internal constructor(
 
     /** Subtracts the other value from this value. */
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun minus(other: Float): Float = toFloat() - other
+    public inline operator fun minus(other: Float): Float = toFloat().minus(other)
 
     /** Subtracts the other value from this value. */
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun minus(other: Double): Double = toDouble() - other
+    public inline operator fun minus(other: Double): Double = toDouble().minus(other)
 
     /** Multiplies this value by the other value. */
     @kotlin.internal.IntrinsicConstEvaluation
@@ -153,11 +149,11 @@ public class Long internal constructor(
 
     /** Multiplies this value by the other value. */
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun times(other: Float): Float = toFloat() * other
+    public inline operator fun times(other: Float): Float = toFloat().times(other)
 
     /** Multiplies this value by the other value. */
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun times(other: Double): Double = toDouble() * other
+    public inline operator fun times(other: Double): Double = toDouble().times(other)
 
     /** Divides this value by the other value, truncating the result to an integer that is closer to zero. */
     @kotlin.internal.IntrinsicConstEvaluation
@@ -177,11 +173,11 @@ public class Long internal constructor(
 
     /** Divides this value by the other value. */
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun div(other: Float): Float = toFloat() / other
+    public inline operator fun div(other: Float): Float = toFloat().div(other)
 
     /** Divides this value by the other value. */
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun div(other: Double): Double = toDouble() / other
+    public inline operator fun div(other: Double): Double = toDouble().div(other)
 
     /**
      * Calculates the remainder of truncating division of this value (dividend) by the other value (divisor).
@@ -226,7 +222,7 @@ public class Long internal constructor(
      */
     @SinceKotlin("1.1")
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun rem(other: Float): Float = toFloat() % other
+    public inline operator fun rem(other: Float): Float = toFloat().rem(other)
 
     /**
      * Calculates the remainder of truncating division of this value (dividend) by the other value (divisor).
@@ -235,7 +231,7 @@ public class Long internal constructor(
      */
     @SinceKotlin("1.1")
     @kotlin.internal.IntrinsicConstEvaluation
-    public inline operator fun rem(other: Double): Double = toDouble() % other
+    public inline operator fun rem(other: Double): Double = toDouble().rem(other)
 
     /**
      * Returns this value incremented by one.
@@ -350,43 +346,92 @@ public class Long internal constructor(
     @kotlin.internal.IntrinsicConstEvaluation
     public fun inv(): Long = Long(low.inv(), high.inv())
 
+    /**
+     * Converts this [Long] value to [Byte].
+     *
+     * If this value is in [Byte.MIN_VALUE]..[Byte.MAX_VALUE], the resulting `Byte` value represents
+     * the same numerical value as this `Long`.
+     *
+     * The resulting `Byte` value is represented by the least significant 8 bits of this `Long` value.
+     */
     @kotlin.internal.IntrinsicConstEvaluation
     public override fun toByte(): Byte = low.toByte()
 
+    /**
+     * Converts this [Long] value to [Char].
+     *
+     * If this value is in the range of `Char` codes `Char.MIN_VALUE..Char.MAX_VALUE`,
+     * the resulting `Char` code is equal to this value.
+     *
+     * The resulting `Char` code is represented by the least significant 16 bits of this `Long` value.
+     */
     @Deprecated("Direct conversion to Char is deprecated. Use toInt().toChar() or Char constructor instead.", ReplaceWith("this.toInt().toChar()"))
     @DeprecatedSinceKotlin(warningSince = "1.5", errorSince = "2.3")
     @kotlin.internal.IntrinsicConstEvaluation
     public override fun toChar(): Char = low.toChar()
 
+    /**
+     * Converts this [Long] value to [Short].
+     *
+     * If this value is in [Short.MIN_VALUE]..[Short.MAX_VALUE], the resulting `Short` value represents
+     * the same numerical value as this `Long`.
+     *
+     * The resulting `Short` value is represented by the least significant 16 bits of this `Long` value.
+     */
     @kotlin.internal.IntrinsicConstEvaluation
     public override fun toShort(): Short = low.toShort()
 
+    /**
+     * Converts this [Long] value to [Int].
+     *
+     * If this value is in [Int.MIN_VALUE]..[Int.MAX_VALUE], the resulting `Int` value represents
+     * the same numerical value as this `Long`.
+     *
+     * The resulting `Int` value is represented by the least significant 32 bits of this `Long` value.
+     */
     @kotlin.internal.IntrinsicConstEvaluation
     public override fun toInt(): Int = low
 
+    /** Returns this value. */
     @kotlin.internal.IntrinsicConstEvaluation
     public override fun toLong(): Long = this
 
+    /**
+     * Converts this [Long] value to [Float].
+     *
+     * The resulting value is the closest `Float` to this `Long` value.
+     * In case when this `Long` value is exactly between two `Float`s,
+     * the one with zero at least significant bit of mantissa is selected.
+     */
     @kotlin.internal.IntrinsicConstEvaluation
     public override fun toFloat(): Float = toDouble().toFloat()
 
+    /**
+     * Converts this [Long] value to [Double].
+     *
+     * The resulting value is the closest `Double` to this `Long` value.
+     * In case when this `Long` value is exactly between two `Double`s,
+     * the one with zero at least significant bit of mantissa is selected.
+     */
     @kotlin.internal.IntrinsicConstEvaluation
     public override fun toDouble(): Double = toNumber()
 
-    // This method is used by JavaScript to convert objects of type Long to primitives.
-    // This is essential for the JavaScript interop.
-    // JavaScript functions that expect `number` are imported in Kotlin as expecting `kotlin.Number`
-    // (in our standard library, and also in user projects if they use Dukat for generating external declarations).
-    // Because `kotlin.Number` is a supertype of `Long` too, there has to be a way for JS to know how to handle Longs.
-    // See KT-50202
-    @JsName("valueOf")
-    internal fun valueOf() = toDouble()
+    @kotlin.internal.IntrinsicConstEvaluation
+    override fun toString(): String = this.toStringImpl(radix = 10)
 
     @kotlin.internal.IntrinsicConstEvaluation
     override fun equals(other: Any?): Boolean = other is Long && equalsLong(other)
 
     override fun hashCode(): Int = hashCode(this)
 
-    @kotlin.internal.IntrinsicConstEvaluation
-    override fun toString(): String = this.toStringImpl(radix = 10)
+    /**
+     * This method is used by JavaScript to convert objects of type Long to primitives.
+     * This is essential for the JavaScript interop.
+     * JavaScript functions that expect `number` are imported in Kotlin as expecting `kotlin.Number`
+     * (in our standard library, and also in user projects if they use Dukat for generating external declarations).
+     * Because `kotlin.Number` is a supertype of `Long` too, there has to be a way for JS to know how to handle Longs.
+     * See KT-50202
+     */
+    @JsName("valueOf")
+    internal fun valueOf(): Double = toDouble()
 }
