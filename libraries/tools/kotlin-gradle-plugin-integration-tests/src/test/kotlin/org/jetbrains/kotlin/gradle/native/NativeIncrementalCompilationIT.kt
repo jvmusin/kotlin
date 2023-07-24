@@ -12,7 +12,7 @@ import org.jetbrains.kotlin.konan.target.HostManager
 import org.jetbrains.kotlin.konan.target.KonanTarget
 import org.junit.jupiter.api.DisplayName
 import java.nio.file.Path
-import kotlin.io.path.appendText
+import kotlin.io.path.writeText
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
@@ -110,8 +110,7 @@ class NativeIncrementalCompilationIT : KGPBaseTest() {
                 fooKtCacheModified = fooKtCache.toFile().lastModified()
             }
 
-            val fooKt = kotlinSourcesDir("hostMain").resolve("foo.kt").toFile()
-            fooKt.delete()
+            val fooKt = kotlinSourcesDir("hostMain").resolve("foo.kt")
             fooKt.writeText("fun foo(): Int = \"zzz\"")
 
             buildAndFail(
@@ -126,7 +125,6 @@ class NativeIncrementalCompilationIT : KGPBaseTest() {
                 assertTasksFailed(":compileKotlinHost")
             }
 
-            fooKt.delete()
             fooKt.writeText("fun foo(): Int = 42")
 
             build(
@@ -170,8 +168,7 @@ class NativeIncrementalCompilationIT : KGPBaseTest() {
                 fooKtCacheModified = fooKtCache.toFile().lastModified()
             }
 
-            val fooKt = kotlinSourcesDir("hostMain").resolve("foo.kt").toFile()
-            fooKt.delete()
+            val fooKt = kotlinSourcesDir("hostMain").resolve("foo.kt")
             fooKt.writeText("fun foo(): Int = \"zzz\"")
 
             buildAndFail(
@@ -186,7 +183,6 @@ class NativeIncrementalCompilationIT : KGPBaseTest() {
                 assertTasksFailed(":compileKotlinHost")
             }
 
-            fooKt.delete()
             fooKt.writeText("fun foo(): String = \"zzz\"")
 
             build(
@@ -234,8 +230,7 @@ class NativeIncrementalCompilationIT : KGPBaseTest() {
                 mainKtCacheModified = mainKtCache.toFile().lastModified()
             }
 
-            val fooKt = projectPath.resolve("library/src/hostMain/kotlin").resolve("foo.kt").toFile()
-            fooKt.delete()
+            val fooKt = projectPath.resolve("library/src/hostMain/kotlin").resolve("foo.kt")
             fooKt.writeText("fun foo(): Int = 41")
 
             build(
