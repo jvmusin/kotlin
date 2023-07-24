@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.fir.analysis.cfa.evaluatedInPlace
 import org.jetbrains.kotlin.fir.analysis.cfa.requiresInitialization
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.context.findClosest
+import org.jetbrains.kotlin.fir.analysis.checkers.getContainingSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors
 import org.jetbrains.kotlin.fir.declarations.*
@@ -136,14 +137,24 @@ object FirReassignmentAndInvisibleSetterChecker : FirVariableAssignmentChecker()
         val property = expression.calleeReference?.toResolvedPropertySymbol() ?: return
         if (property.isVar) return
         // Assignments of uninitialized `val`s must be checked via CFG, since the first one is OK.
-        // See `FirPropertyInitializationAnalyzer` for locals and `FirMemberPropertiesChecker` for backing fields in initializers.
-        if (property.isLocal && property.requiresInitialization(isForClassInitialization = false)) return
+        // See `FirPropertyInitializationAnalyzer` for locals, `FirMemberPropertiesChecker` for backing fields in initializers,
+        // and `FirTopLevelPropertiesChecker` for top-level properties.
+        if (
+            (property.isLocal || isTopLevelInitializer(property, context))
+            && property.requiresInitialization(isForClassInitialization = false)
+        ) return
         if (
             isInOwnersInitializer(expression.dispatchReceiver.unwrapSmartcastExpression(), context)
             && property.requiresInitialization(isForClassInitialization = true)
         ) return
 
         reporter.reportOn(expression.lValue.source, FirErrors.VAL_REASSIGNMENT, property, context)
+    }
+
+    private fun isTopLevelInitializer(property: FirPropertySymbol, context: CheckerContext): Boolean {
+        if (context.containingDeclarations.any { !it.evaluatedInPlace }) return false
+        val file = context.containingDeclarations.lastOrNull { it is FirFile } as? FirFile ?: return false
+        return file.symbol == property.getContainingSymbol(context.session)
     }
 
     private fun isInOwnersInitializer(receiver: FirExpression, context: CheckerContext): Boolean {

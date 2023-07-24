@@ -3117,6 +3117,12 @@ public class FirLightTreeOldFrontendDiagnosticsTestGenerated extends AbstractFir
             }
 
             @Test
+            @TestMetadata("TopLevelPropertyInitialization.kt")
+            public void testTopLevelPropertyInitialization() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/backingField/TopLevelPropertyInitialization.kt");
+            }
+
+            @Test
             @TestMetadata("ValDeferredInitInFinalClass.kt")
             public void testValDeferredInitInFinalClass() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/backingField/ValDeferredInitInFinalClass.kt");

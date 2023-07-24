@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.utils.hasBackingField
 import org.jetbrains.kotlin.fir.declarations.utils.hasExplicitBackingField
+import org.jetbrains.kotlin.fir.declarations.utils.isExternal
 import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
 import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.isCatchParameter
@@ -80,6 +81,22 @@ fun PropertyInitializationInfoData.checkPropertyAccesses(
     )
 }
 
+fun PropertyInitializationInfoData.checkPropertyAccess(
+    property: FirPropertySymbol,
+    isForClassInitialization: Boolean,
+    context: CheckerContext,
+    reporter: DiagnosticReporter
+) {
+    // If a property has an initializer (or does not need one), then any reads are OK while any writes are OK
+    // if it's a `var` and bad if it's a `val`. `FirReassignmentAndInvisibleSetterChecker` does this without a CFG.
+    if (!property.requiresInitialization(isForClassInitialization)) return
+
+    checkPropertyAccesses(
+        graph, setOf(property), context, reporter, scope = null,
+        isForClassInitialization, doNotReportUninitializedVariable = false, mutableMapOf()
+    )
+}
+
 @OptIn(SymbolInternals::class)
 private fun PropertyInitializationInfoData.checkPropertyAccesses(
     graph: ControlFlowGraph,
@@ -126,7 +143,7 @@ private fun PropertyInitializationInfoData.checkPropertyAccesses(
             node is QualifiedAccessNode -> {
                 if (doNotReportUninitializedVariable) continue
                 val symbol = node.fir.calleeReference.toResolvedPropertySymbol() ?: continue
-                if (!symbol.isLateInit && node.fir.hasCorrectReceiver() && symbol in properties &&
+                if (!symbol.isLateInit && !symbol.isExternal && node.fir.hasCorrectReceiver() && symbol in properties &&
                     getValue(node).values.any { it[symbol]?.isDefinitelyVisited() != true }
                 ) {
                     reporter.reportOn(node.fir.source, FirErrors.UNINITIALIZED_VARIABLE, symbol, context)
