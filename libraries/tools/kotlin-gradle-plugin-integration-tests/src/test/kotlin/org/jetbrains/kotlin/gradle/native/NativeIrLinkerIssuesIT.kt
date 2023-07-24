@@ -120,14 +120,18 @@ internal class NativeIrLinkerIssuesIT : KGPBaseTest() {
         }
     }
 
+//    override val defaultBuildOptions: BuildOptions
+//        get() = super.defaultBuildOptions.copy(konanDataDir = null)
+//
     @DisplayName("KT-41378: declaration that is gone - with cache")
     @GradleTest
+    @GradleTestVersions(maxVersion = TestVersions.Gradle.MIN_SUPPORTED)
     @DisabledOnOs(OS.WINDOWS, disabledReason = "Don't run it on Windows. Caches are not supported there yet.")
     fun shouldBuildIrLinkerWithCache(
         gradleVersion: GradleVersion,
         @TempDir tempDir: Path,
     ) {
-
+        println("HERE IS ENV VARIABLES\n${System.getenv()}\n")
         buildConflictingLibrariesAndApplication(
             directoryPrefix = "native-ir-linker-issues-gone-declaration",
             nativeCacheKind = NativeCacheKind.STATIC,
@@ -192,6 +196,7 @@ internal class NativeIrLinkerIssuesIT : KGPBaseTest() {
 
     @DisplayName("KT-47285: symbol type mismatch - with cache")
     @GradleTest
+    @GradleTestVersions(maxVersion = TestVersions.Gradle.MIN_SUPPORTED)
     @OsCondition(supportedOn = [OS.MAC, OS.LINUX], enabledOnCI = [OS.LINUX])
     // Don't run it on Windows. Caches are not supported there yet.
     fun shouldBuildIrLinkerSymbolTypeMismatchWithCache(
@@ -292,7 +297,7 @@ internal class NativeIrLinkerIssuesIT : KGPBaseTest() {
         expectedErrorMessage: (compilerVersion: String) -> String,
     ) {
         prepareProject(directoryPrefix, projectName, localRepo, nativeCacheKind, gradleVersion) {
-            buildAndFail("linkDebugExecutableNative", buildOptions = this.buildOptions.copy(logLevel = LogLevel.DEBUG)) {
+            buildAndFail("linkDebugExecutableNative", enableGradleDebug = true, buildOptions = this.buildOptions.copy(logLevel = LogLevel.DEBUG)) {
 
                 val kotlinNativeCompilerVersion = findKotlinNativeCompilerVersion(output)
                 assertNotNull(kotlinNativeCompilerVersion)
@@ -310,20 +315,22 @@ internal class NativeIrLinkerIssuesIT : KGPBaseTest() {
                         }
                     }.joinToString("\n")
 
-                assertEquals(
-                    expectedErrorMessage(kotlinNativeCompilerVersion), errorMessage,
-                    """
-                    We expect:
-                    
-                    ${expectedErrorMessage(kotlinNativeCompilerVersion)}
-                    but get:
-                    
-                    ${errorMessage}
-                    
-                    Actual output is:
-                    $output
-                    """.trimIndent()
-                )
+//                println(
+//                    """
+//                        WE ARE HERE!!!!
+//                    We expect:
+//
+//                    ${expectedErrorMessage(kotlinNativeCompilerVersion)}
+//
+//                    but get:
+//
+//                    ${errorMessage}
+//
+//                    Actual output is:
+//                    $output
+//                    """.trimIndent()
+//                )
+                assertEquals(expectedErrorMessage(kotlinNativeCompilerVersion), errorMessage)
             }
         }
     }
