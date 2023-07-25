@@ -146,15 +146,15 @@ internal abstract class KotlinNativeToolRunner(
         super.run(args + extractArgsFromSettings())
     }
 
-    private fun extractArgsFromSettings(): List<String> {
-        return settings.konanDataDir?.let { listOf("-Xkonan-data-dir", it) } ?: emptyList()
+    protected open fun extractArgsFromSettings(): List<String> {
+        return settings.konanDataDir?.let { listOf("-Xkonan-data-dir=$it") } ?: emptyList()
     }
 }
 
 /** A common ancestor for all runners that run the cinterop tool. */
 internal abstract class AbstractKotlinNativeCInteropRunner(
     toolName: String,
-    settings: Settings,
+    private val settings: Settings,
     executionContext: GradleExecutionContext,
     metricsReporter: BuildMetricsReporter<GradleBuildTime, GradleBuildPerformanceMetric>
 ) : KotlinNativeToolRunner(toolName, settings, executionContext, metricsReporter) {
@@ -169,6 +169,10 @@ internal abstract class AbstractKotlinNativeCInteropRunner(
             result["PATH"] = "$it;${System.getenv("PATH")}"
         }
         result
+    }
+
+    override fun extractArgsFromSettings(): List<String> {
+        return settings.konanDataDir?.let { listOf("-Xkonan-data-dir", it) } ?: emptyList()
     }
 
     private val llvmExecutablesPath: String? by lazy {
