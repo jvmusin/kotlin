@@ -33,7 +33,7 @@ class ControlFlowGraphBuilder {
     private val graphs: Stack<ControlFlowGraph> = stackOf()
 
     val isTopLevel: Boolean
-        get() = graphs.isEmpty
+        get() = graphs.isEmpty || graphs.topOrNull()?.kind == ControlFlowGraph.Kind.File
 
     val currentGraph: ControlFlowGraph
         get() = graphs.top()
@@ -379,6 +379,53 @@ class ControlFlowGraphBuilder {
         }
     }
 
+    // ----------------------------------- Files -----------------------------------
+
+    fun enterFile(file: FirFile, buildGraph: Boolean): FileEnterNode? {
+        if (!buildGraph) {
+            graphs.push(ControlFlowGraph(null, "<discarded file graph>", ControlFlowGraph.Kind.File))
+            return null
+        }
+
+        return enterGraph(file, "FILE_GRAPH", ControlFlowGraph.Kind.File) {
+            createFileEnterNode(it) to createFileExitNode(it)
+        }
+    }
+
+     fun exitFile(): Pair<FileExitNode?, ControlFlowGraph?> {
+        assert(currentGraph.kind == ControlFlowGraph.Kind.File)
+        if (currentGraph.declaration == null) {
+            graphs.pop() // Discard empty file graph.
+            return null to null
+        }
+
+        // Properties of a file can be visited in any order, so data flow between them is unordered,
+        // and we have to recreate the control flow after the fact.
+        val enterNode = lastNodes.pop() as FileEnterNode
+        val exitNode = currentGraph.exitNode as FileExitNode
+
+        val properties = mutableListOf<ControlFlowGraph>()
+        enterNode.fir.forEachGraphOwner {
+            val graph = it.controlFlowGraphReference?.controlFlowGraph ?: return@forEachGraphOwner
+            if (it is FirProperty) properties.add(graph)
+        }
+
+        var lastNode: CFGNode<*> = enterNode
+        for (property in properties) {
+            addEdge(lastNode, property.enterNode, preferredKind = EdgeKind.CfgForward, propagateDeadness = false)
+            lastNode = property.exitNode
+        }
+
+        addEdge(lastNode, exitNode, preferredKind = EdgeKind.CfgForward, propagateDeadness = false)
+        if (properties.isNotEmpty()) {
+            // Fake edge to enforce ordering.
+            addEdge(enterNode, exitNode, preferredKind = EdgeKind.DeadForward, propagateDeadness = false)
+        }
+
+        enterNode.subGraphs = properties
+        return exitNode to popGraph()
+    }
+
     // ----------------------------------- Classes -----------------------------------
 
     private fun FirClass.firstInPlaceInitializedMember(): FirDeclaration? =
@@ -390,6 +437,18 @@ class ControlFlowGraphBuilder {
                 block(member)
             }
 
+            if (member is FirProperty) {
+                member.getter?.let { block(it) }
+                member.setter?.let { block(it) }
+            }
+        }
+    }
+
+    private inline fun FirFile.forEachGraphOwner(block: (FirControlFlowGraphOwner) -> Unit) {
+        for (member in declarations) {
+            if (member is FirControlFlowGraphOwner && member.memberShouldHaveGraph) {
+                block(member)
+            }
             if (member is FirProperty) {
                 member.getter?.let { block(it) }
                 member.setter?.let { block(it) }
@@ -1413,4 +1472,13 @@ val FirControlFlowGraphOwner.isUsedInControlFlowGraphBuilderForClass: Boolean
         is FirConstructor, is FirAnonymousInitializer -> true
         is FirFunction, is FirClass -> false
         else -> true
+    }
+
+/**
+ * @return true for [FirControlFlowGraphOwner] which, as a file member, should be part of the file
+ */
+val FirControlFlowGraphOwner.isUsedInControlFlowGraphBuilderForFile: Boolean
+    get() = when (this) {
+        is FirProperty -> memberShouldHaveGraph
+        else -> false
     }
