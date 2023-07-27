@@ -25,6 +25,8 @@ import org.jetbrains.kotlin.build.report.metrics.GradleBuildPerformanceMetric
 import org.jetbrains.kotlin.build.report.metrics.GradleBuildTime
 import org.jetbrains.kotlin.compilerRunner.KotlinNativeCompilerRunner
 import org.jetbrains.kotlin.compilerRunner.KotlinToolRunner
+import org.jetbrains.kotlin.compilerRunner.konanDataDir
+import org.jetbrains.kotlin.compilerRunner.konanHome
 import org.jetbrains.kotlin.compilerRunner.addBuildMetricsForTaskAction
 import org.jetbrains.kotlin.gradle.dsl.*
 import org.jetbrains.kotlin.gradle.internal.ensureParentDirsCreated
@@ -176,6 +178,15 @@ abstract class KotlinNativeLinkArtifactTask @Inject constructor(
         .property(GradleBuildMetricsReporter())
 
     private val runnerSettings = KotlinNativeCompilerRunner.Settings.fromProject(project)
+
+    @Optional
+    @get:Input
+    val konanDataDir: Provider<String?> = project.provider { project.konanDataDir }
+
+    @get:Input
+    val konanHome: Provider<String> = project.provider { project.konanHome }
+
+    private val runnerSettings = KotlinNativeCompilerRunner.Settings.of(konanHome.get(), konanDataDir.getOrNull(),project)
 
     init {
         baseName.convention(project.name)

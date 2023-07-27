@@ -31,7 +31,8 @@ private val Project.jvmArgs
     get() = PropertiesProvider(this).nativeJvmArgs?.split("\\s+".toRegex()).orEmpty()
 
 internal val Project.konanHome: String
-    get() = PropertiesProvider(this).nativeHome?.let { file(it).absolutePath }
+    get() = PropertiesProvider(this).konanDataDir?.let { NativeCompilerDownloader(project).compilerDirectory.absolutePath }
+        ?: PropertiesProvider(this).nativeHome?.let { file(it).absolutePath }
         ?: NativeCompilerDownloader(project).compilerDirectory.absolutePath
 
 internal val Project.disableKonanDaemon: Boolean
@@ -90,14 +91,14 @@ internal abstract class KotlinNativeToolRunner(
         val konanDataDir: String?,
     ) {
         companion object {
-            fun fromProject(project: Project) = Settings(
+            fun of(konanHome: String, konanDataDir: String?, project: Project) = Settings(
                 konanVersion = project.konanVersion,
-                konanHome = project.konanHome,
-                konanPropertiesFile = project.file("${project.konanHome}/konan/konan.properties"),
+                konanHome = konanHome,
+                konanPropertiesFile = project.file("${konanHome}/konan/konan.properties"),
                 useXcodeMessageStyle = project.useXcodeMessageStyle,
                 jvmArgs = project.jvmArgs,
-                classpath = project.files(project.kotlinNativeCompilerJar, "${project.konanHome}/konan/lib/trove4j.jar"),
-                konanDataDir = project.konanDataDir
+                classpath = project.files(project.kotlinNativeCompilerJar, "${konanHome}/konan/lib/trove4j.jar"),
+                konanDataDir = konanDataDir
             )
         }
     }
@@ -226,8 +227,8 @@ internal class KotlinNativeCompilerRunner(
         val disableKonanDaemon: Boolean,
     ) {
         companion object {
-            fun fromProject(project: Project) = Settings(
-                parent = KotlinNativeToolRunner.Settings.fromProject(project),
+            fun of(konanHome: String, konanDataDir: String?, project: Project) = Settings(
+                parent = KotlinNativeToolRunner.Settings.of(konanHome, konanDataDir, project),
                 disableKonanDaemon = project.disableKonanDaemon,
             )
         }
@@ -264,7 +265,7 @@ internal class KotlinNativeLibraryGenerationRunner(
 
     companion object {
         fun fromProject(project: Project) = KotlinNativeLibraryGenerationRunner(
-            settings = Settings.fromProject(project),
+            settings = Settings.of(project.konanHome, project.konanDataDir, project),
             executionContext = GradleExecutionContext.fromProject(project),
             metricsReporter = GradleBuildMetricsReporter()
         )

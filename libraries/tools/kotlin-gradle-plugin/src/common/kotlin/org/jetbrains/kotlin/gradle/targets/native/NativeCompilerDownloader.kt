@@ -11,6 +11,7 @@ import org.gradle.api.artifacts.repositories.ArtifactRepository
 import org.gradle.api.file.FileTree
 import org.gradle.api.logging.Logger
 import org.jetbrains.kotlin.compilerRunner.KotlinNativeToolRunner
+import org.jetbrains.kotlin.compilerRunner.konanDataDir
 import org.jetbrains.kotlin.compilerRunner.konanHome
 import org.jetbrains.kotlin.compilerRunner.konanVersion
 import org.jetbrains.kotlin.gradle.logging.kotlinInfo
@@ -41,7 +42,7 @@ class NativeCompilerDownloader(
 
     val compilerDirectory: File
         get() = DependencyDirectories
-            .getLocalKonanDir(project.kotlinPropertiesProvider.konanDataDir)
+            .getLocalKonanDir(project.konanDataDir)
             .resolve(dependencyNameWithOsAndVersion)
 
     private val logger: Logger
@@ -186,7 +187,7 @@ class NativeCompilerDownloader(
 
     fun downloadIfNeeded() {
 
-        val classpath = KotlinNativeToolRunner.Settings.fromProject(project).classpath
+        val classpath = KotlinNativeToolRunner.Settings.of(project.konanHome, project.konanDataDir, project).classpath
         if (classpath.isEmpty() || classpath.any { !it.exists() }) {
             downloadAndExtract()
         }
