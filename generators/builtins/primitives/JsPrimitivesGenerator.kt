@@ -107,9 +107,9 @@ class JsPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(write
         body.addAsSingleLineBody(bodyOnNewLine = false)
     }
 
-    override fun MethodBuilder.modifyGeneratedConversions(thisKind: PrimitiveType) {
+    override fun MethodBuilder.modifyGeneratedConversions(thisKind: PrimitiveType, otherKind: PrimitiveType) {
         if (thisKind != PrimitiveType.LONG) return
-        val body = when (val returnTypeAsPrimitive = PrimitiveType.valueOf(returnType.uppercase())) {
+        val body = when (otherKind) {
             PrimitiveType.BYTE -> "low.toByte()"
             PrimitiveType.CHAR -> "low.toChar()"
             PrimitiveType.SHORT -> "low.toShort()"
@@ -117,7 +117,7 @@ class JsPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(write
             PrimitiveType.LONG -> "this"
             PrimitiveType.FLOAT -> "toDouble().toFloat()"
             PrimitiveType.DOUBLE -> "toNumber()"
-            else -> throw IllegalArgumentException("Unsupported type $returnTypeAsPrimitive for Long conversion")
+            else -> throw IllegalArgumentException("Unsupported type $otherKind for Long conversion")
         }
         body.addAsSingleLineBody(bodyOnNewLine = false)
     }

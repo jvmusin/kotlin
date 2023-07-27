@@ -276,7 +276,7 @@ abstract class CharGenerator(private val writer: PrintWriter) : BuiltInsGenerato
                     methodName = "to$otherName"
                     returnType = otherKind.capitalized
                 }
-            }.modifyGeneratedConversions()
+            }.modifyGeneratedConversions(otherKind)
         }
     }
 
@@ -317,7 +317,7 @@ abstract class CharGenerator(private val writer: PrintWriter) : BuiltInsGenerato
     internal open fun MethodBuilder.modifyGeneratedDec() {}
     internal open fun MethodBuilder.modifyGeneratedRangeTo() {}
     internal open fun MethodBuilder.modifyGeneratedRangeUntil() {}
-    internal open fun MethodBuilder.modifyGeneratedConversions() {}
+    internal open fun MethodBuilder.modifyGeneratedConversions(otherKind: PrimitiveType) {}
     internal open fun MethodBuilder.modifyGeneratedToString() {}
     internal open fun MethodBuilder.modifyGeneratedEquals() {}
     internal open fun ClassBuilder.generateAdditionalMethods() {}
@@ -402,10 +402,10 @@ class JsCharGenerator(writer: PrintWriter) : CharGenerator(writer) {
         "this until other".addAsSingleLineBody(bodyOnNewLine = false)
     }
 
-    override fun MethodBuilder.modifyGeneratedConversions() {
-        val body = when (methodName) {
-            "toChar" -> "this"
-            "toInt" -> "value"
+    override fun MethodBuilder.modifyGeneratedConversions(otherKind: PrimitiveType) {
+        val body = when (otherKind) {
+            PrimitiveType.CHAR -> "this"
+            PrimitiveType.INT -> "value"
             else -> "value.$methodName()"
         }
         body.addAsSingleLineBody(bodyOnNewLine = false)
@@ -533,11 +533,11 @@ class WasmCharGenerator(writer: PrintWriter) : CharGenerator(writer) {
         "this until other".addAsSingleLineBody(bodyOnNewLine = true)
     }
 
-    override fun MethodBuilder.modifyGeneratedConversions() {
+    override fun MethodBuilder.modifyGeneratedConversions(otherKind: PrimitiveType) {
         modifySignature { isInline = methodName != "toInt" }
-        val body = when (methodName) {
-            "toChar" -> "this"
-            "toInt" -> {
+        val body = when (otherKind) {
+            PrimitiveType.CHAR -> "this"
+            PrimitiveType.INT -> {
                 annotations += "WasmNoOpCast"
                 "implementedAsIntrinsic"
             }
@@ -686,16 +686,17 @@ class NativeCharGenerator(writer: PrintWriter) : CharGenerator(writer) {
         "this until other".addAsSingleLineBody(bodyOnNewLine = true)
     }
 
-    override fun MethodBuilder.modifyGeneratedConversions() {
+    override fun MethodBuilder.modifyGeneratedConversions(otherKind: PrimitiveType) {
         modifySignature { isExternal = methodName != "toChar" }
-        when (methodName) {
-            "toByte" -> annotations += "TypedIntrinsic(IntrinsicType.INT_TRUNCATE)"
-            "toChar" -> {
+        when (otherKind) {
+            PrimitiveType.BYTE -> annotations += "TypedIntrinsic(IntrinsicType.INT_TRUNCATE)"
+            PrimitiveType.CHAR -> {
                 modifySignature { isInline = true }
                 "this".addAsSingleLineBody(bodyOnNewLine = true)
             }
-            "toShort", "toInt", "toLong" -> annotations += "TypedIntrinsic(IntrinsicType.ZERO_EXTEND)"
-            "toFloat", "toDouble" -> annotations += "TypedIntrinsic(IntrinsicType.UNSIGNED_TO_FLOAT)"
+            PrimitiveType.SHORT, PrimitiveType.INT, PrimitiveType.LONG -> annotations += "TypedIntrinsic(IntrinsicType.ZERO_EXTEND)"
+            PrimitiveType.FLOAT, PrimitiveType.DOUBLE -> annotations += "TypedIntrinsic(IntrinsicType.UNSIGNED_TO_FLOAT)"
+            else -> error("Unsupported `Char` conversion to $otherKind")
         }
     }
 
