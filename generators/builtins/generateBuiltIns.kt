@@ -10,7 +10,10 @@ import org.jetbrains.kotlin.generators.builtins.arrays.GenerateArrays
 import org.jetbrains.kotlin.generators.builtins.functions.GenerateFunctions
 import org.jetbrains.kotlin.generators.builtins.iterators.GenerateIterators
 import org.jetbrains.kotlin.generators.builtins.numbers.GenerateFloorDivMod
-import org.jetbrains.kotlin.generators.builtins.numbers.primitives.*
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.JsPrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.JvmPrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.NativePrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.WasmPrimitivesGenerator
 import org.jetbrains.kotlin.generators.builtins.progressionIterators.GenerateProgressionIterators
 import org.jetbrains.kotlin.generators.builtins.progressions.GenerateProgressions
 import org.jetbrains.kotlin.generators.builtins.ranges.GenerateRanges
@@ -85,8 +88,6 @@ fun generateBuiltIns(generate: (File, (PrintWriter) -> BuiltInsGenerator) -> Uni
     generate(File(BUILT_INS_NATIVE_DIR_JS, "Char.kt")) { JsCharGenerator(it) }
     generate(File(BUILT_INS_NATIVE_DIR_WASM, "kotlin/Char.kt")) { WasmCharGenerator(it) }
     generate(File(BUILT_INS_NATIVE_DIR_NATIVE, "kotlin/Char.kt")) { NativeCharGenerator(it) }
-
-    generate(File(BUILT_INS_NATIVE_DIR_JS, "../runtime/long.kt")) { JsLongGenerator(it) }
 
     generate(File(RUNTIME_JVM_DIR, "kotlin/jvm/functions/Functions.kt")) { GenerateFunctions(it) }
     generate(File(BUILT_INS_NATIVE_DIR_JVM, "kotlin/Arrays.kt")) { GenerateArrays(it) }

@@ -9,13 +9,10 @@ import org.jetbrains.kotlin.generators.builtins.PrimitiveType
 import java.io.PrintWriter
 
 class JsPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
-    override fun PrimitiveType.shouldGenerate(): Boolean {
-        return this != PrimitiveType.LONG
-    }
-
     override fun FileBuilder.modifyGeneratedFile() {
         suppress("NON_ABSTRACT_FUNCTION_WITH_NO_BODY")
         suppress("UNUSED_PARAMETER")
+        suppress("NOTHING_TO_INLINE")
     }
 
     override fun PropertyBuilder.modifyGeneratedCompanionObjectProperty(thisKind: PrimitiveType) {
@@ -24,31 +21,8 @@ class JsPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(write
         }
     }
 
-    override fun MethodBuilder.modifyGeneratedRangeTo(thisKind: PrimitiveType, otherKind: PrimitiveType, opReturnType: PrimitiveType) {
-        noBody()
-    }
-
-    override fun ClassBuilder.generateAdditionalMethods(thisKind: PrimitiveType) {
-        method {
-            signature {
-                isOverride = true
-                methodName = "hashCode"
-                returnType = PrimitiveType.INT.capitalized
-            }
-        }
-    }
-}
-
-class JsLongGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
-    override fun PrimitiveType.shouldGenerate(): Boolean {
-        return this == PrimitiveType.LONG
-    }
-
-    override fun FileBuilder.modifyGeneratedFile() {
-        suppress("NOTHING_TO_INLINE")
-    }
-
     override fun ClassBuilder.modifyGeneratedClass(thisKind: PrimitiveType) {
+        if (thisKind != PrimitiveType.LONG) return
         primaryConstructor {
             visibility = MethodVisibility.INTERNAL
             parameter {
@@ -63,6 +37,7 @@ class JsLongGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
     }
 
     override fun MethodBuilder.modifyGeneratedCompareTo(thisKind: PrimitiveType, otherKind: PrimitiveType) {
+        if (thisKind != PrimitiveType.LONG) return
         modifySignature { isInline = otherKind != PrimitiveType.LONG }
         val body = when (otherKind) {
             PrimitiveType.LONG -> "compare(other)"
@@ -74,6 +49,7 @@ class JsLongGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
     }
 
     override fun MethodBuilder.modifyGeneratedBinaryOperation(thisKind: PrimitiveType, otherKind: PrimitiveType) {
+        if (thisKind != PrimitiveType.LONG) return
         modifySignature { isInline = otherKind != PrimitiveType.LONG }
         val body = when (otherKind) {
             PrimitiveType.LONG -> {
@@ -87,41 +63,34 @@ class JsLongGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
                 }
                 "$specialNameForLong(other)"
             }
-            PrimitiveType.FLOAT -> "toFloat().${this.methodName}(other)"
-            PrimitiveType.DOUBLE -> "toDouble().${this.methodName}(other)"
-            else -> "${this.methodName}(other.toLong())"
+            else -> "this${thisKind.castToIfNecessary(otherKind)}.${methodName}(other${otherKind.castToIfNecessary(thisKind)})"
         }
         body.addAsSingleLineBody()
     }
 
     override fun MethodBuilder.modifyGeneratedUnaryOperation(thisKind: PrimitiveType) {
-        when (methodName) {
-            "inc", "dec" -> {
-                val sign = if (methodName == "dec") "-" else "+"
-                "this $sign 1L".addAsSingleLineBody(bodyOnNewLine = false)
-            }
-            "unaryPlus" -> {
-                modifySignature { isInline = true }
-                "this".addAsSingleLineBody(bodyOnNewLine = false)
-            }
-            "unaryMinus" -> "inv() + 1L".addAsSingleLineBody(bodyOnNewLine = false)
-        }
-    }
-
-    override fun MethodBuilder.modifyGeneratedRangeTo(thisKind: PrimitiveType) {
-        val body = if (parameterType == thisKind.capitalized) {
-            "LongRange(this, other)"
-        } else {
-            "rangeTo(other.toLong())"
+        if (thisKind != PrimitiveType.LONG) return
+        modifySignature { isInline = methodName == "unaryPlus" }
+        val body = when (methodName) {
+            "inc" -> "this + 1L"
+            "dec" -> "this - 1L"
+            "unaryMinus" -> "this.inv() + 1L"
+            "unaryPlus" -> "this"
+            else -> error(methodName)
         }
         body.addAsSingleLineBody(bodyOnNewLine = false)
     }
 
-    override fun MethodBuilder.modifyGeneratedRangeUntil(thisKind: PrimitiveType) {
-        "this until other".addAsSingleLineBody(bodyOnNewLine = false)
+    override fun MethodBuilder.modifyGeneratedRangeTo(thisKind: PrimitiveType, otherKind: PrimitiveType, opReturnType: PrimitiveType) {
+        noBody()
+        if (thisKind != PrimitiveType.LONG) return
+
+        val body = if (thisKind == otherKind) "LongRange(this, other)" else "rangeTo(other.toLong())"
+        body.addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun MethodBuilder.modifyGeneratedBitShiftOperators(thisKind: PrimitiveType) {
+        if (thisKind != PrimitiveType.LONG) return
         when (methodName) {
             "shl" -> "shiftLeft($parameterName)".addAsSingleLineBody(bodyOnNewLine = false)
             "shr" -> "shiftRight($parameterName)".addAsSingleLineBody(bodyOnNewLine = false)
@@ -130,6 +99,7 @@ class JsLongGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
     }
 
     override fun MethodBuilder.modifyGeneratedBitwiseOperators(thisKind: PrimitiveType) {
+        if (thisKind != PrimitiveType.LONG) return
         val body = when (methodName) {
             "inv" -> "Long(low.inv(), high.inv())"
             else -> "Long(low $methodName other.low, high $methodName other.high)"
@@ -138,6 +108,7 @@ class JsLongGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
     }
 
     override fun MethodBuilder.modifyGeneratedConversions(thisKind: PrimitiveType) {
+        if (thisKind != PrimitiveType.LONG) return
         val body = when (val returnTypeAsPrimitive = PrimitiveType.valueOf(returnType.uppercase())) {
             PrimitiveType.BYTE -> "low.toByte()"
             PrimitiveType.CHAR -> "low.toChar()"
@@ -152,11 +123,13 @@ class JsLongGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
     }
 
     override fun MethodBuilder.modifyGeneratedEquals(thisKind: PrimitiveType) {
+        if (thisKind != PrimitiveType.LONG) return
         modifySignature { visibility = null }
         "other is Long && equalsLong(other)".addAsSingleLineBody(bodyOnNewLine = false)
     }
 
     override fun MethodBuilder.modifyGeneratedToString(thisKind: PrimitiveType) {
+        if (thisKind != PrimitiveType.LONG) return
         modifySignature { visibility = null }
         "this.toStringImpl(radix = 10)".addAsSingleLineBody(bodyOnNewLine = false)
     }
@@ -164,17 +137,20 @@ class JsLongGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
     override fun ClassBuilder.generateAdditionalMethods(thisKind: PrimitiveType) {
         method {
             signature {
-                visibility = null
+                visibility = if (thisKind != PrimitiveType.LONG) MethodVisibility.PUBLIC else null
                 isOverride = true
                 methodName = "hashCode"
                 returnType = PrimitiveType.INT.capitalized
             }
 
-            "hashCode(this)".addAsSingleLineBody(bodyOnNewLine = false)
+            if (thisKind == PrimitiveType.LONG) {
+                "hashCode(this)".addAsSingleLineBody(bodyOnNewLine = false)
+            }
         }
 
+        if (thisKind != PrimitiveType.LONG) return
         method {
-            val doc = """
+            additionalDoc = """
                 This method is used by JavaScript to convert objects of type Long to primitives.
                 This is essential for the JavaScript interop.
                 JavaScript functions that expect `number` are imported in Kotlin as expecting `kotlin.Number`
@@ -182,7 +158,6 @@ class JsLongGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
                 Because `kotlin.Number` is a supertype of `Long` too, there has to be a way for JS to know how to handle Longs.
                 See KT-50202
             """.trimIndent()
-            appendDoc(doc)
             annotations += "JsName(\"valueOf\")"
             signature {
                 visibility = MethodVisibility.INTERNAL
