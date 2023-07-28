@@ -39,22 +39,38 @@ class DeprecationResolver(
 ) {
     private val deprecations: MemoizedFunctionToNotNull<DeclarationDescriptor, DeprecationInfo> =
         storageManager.createMemoizedFunction { descriptor ->
-            val deprecations = descriptor.getOwnDeprecations()
-            when {
-                deprecations.isNotEmpty() -> DeprecationInfo(deprecations, hasInheritedDeprecations = false)
-                descriptor is CallableMemberDescriptor -> {
-                    val inheritedDeprecations = listOfNotNull(deprecationByOverridden(descriptor))
-                    when (inheritedDeprecations.isNotEmpty()) {
-                        true -> when (languageVersionSettings.supportsFeature(LanguageFeature.StopPropagatingDeprecationThroughOverrides)) {
-                            true -> DeprecationInfo(emptyList(), hasInheritedDeprecations = true, inheritedDeprecations)
-                            false -> DeprecationInfo(inheritedDeprecations, hasInheritedDeprecations = true)
-                        }
-                        false -> DeprecationInfo.EMPTY
-                    }
-                }
-                else -> DeprecationInfo.EMPTY
-            }
+            computeDeprecation(descriptor)
         }
+
+    private fun computeDeprecation(descriptor: DeclarationDescriptor): DeprecationInfo {
+        val deprecations = descriptor.getOwnDeprecations()
+        return when {
+            deprecations.isNotEmpty() -> DeprecationInfo(deprecations, hasInheritedDeprecations = false)
+            descriptor is PropertyAccessorDescriptor && descriptor.correspondingProperty is SyntheticPropertyDescriptor -> {
+                val syntheticProperty = descriptor.correspondingProperty as SyntheticPropertyDescriptor
+                val originalMethod =
+                    if (descriptor is PropertyGetterDescriptor) syntheticProperty.getMethod else syntheticProperty.setMethod
+
+                @Suppress("FoldInitializerAndIfToElvis")
+                if (originalMethod == null) return DeprecationInfo.EMPTY
+                val originalMethodDeprecationInfo = deprecations(originalMethod)
+                val filteredDeprecations =
+                    originalMethodDeprecationInfo.deprecations.filter { it.deprecationLevel == DeprecationLevelValue.WARNING }
+                return originalMethodDeprecationInfo.copy(deprecations = filteredDeprecations)
+            }
+            descriptor is CallableMemberDescriptor -> {
+                val inheritedDeprecations = listOfNotNull(deprecationByOverridden(descriptor))
+                when (inheritedDeprecations.isNotEmpty()) {
+                    true -> when (languageVersionSettings.supportsFeature(LanguageFeature.StopPropagatingDeprecationThroughOverrides)) {
+                        true -> DeprecationInfo(emptyList(), hasInheritedDeprecations = true, inheritedDeprecations)
+                        false -> DeprecationInfo(inheritedDeprecations, hasInheritedDeprecations = true)
+                    }
+                    false -> DeprecationInfo.EMPTY
+                }
+            }
+            else -> DeprecationInfo.EMPTY
+        }
+    }
 
     private data class DeprecationInfo(
         val deprecations: List<DescriptorBasedDeprecationInfo>,
