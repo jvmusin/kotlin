@@ -15,11 +15,11 @@ fun foo(ll: java.util.LinkedList<String>, al: ArrayList<String>, ad: ArrayDeque<
 
     al.addFirst("")
     al.addLast("")
-    al.getFirst()
-    al.first
+    al.<!DEPRECATION!>getFirst<!>()
+    al.<!DEPRECATION!>first<!>
     al.first()
-    al.getLast()
-    al.last
+    al.<!DEPRECATION!>getLast<!>()
+    al.<!DEPRECATION!>last<!>
     al.last()
     al.<!DEBUG_INFO_CALL("fqName: java.util.ArrayList.removeFirst; typeCall: function")!>removeFirst()<!>
     al.<!DEBUG_INFO_CALL("fqName: java.util.ArrayList.removeLast; typeCall: function")!>removeLast()<!>

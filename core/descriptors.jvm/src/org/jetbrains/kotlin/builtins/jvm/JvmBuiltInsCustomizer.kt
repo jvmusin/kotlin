@@ -43,7 +43,6 @@ import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.LazyWrappedType
 import org.jetbrains.kotlin.utils.DFS
 import org.jetbrains.kotlin.utils.SmartSet
-import java.util.*
 
 // This class is worth splitting into two implementations of AdditionalClassPartsProvider and PlatformDependentDeclarationFilter
 // But currently, they shares a piece of code and probably it's better to postpone it
@@ -69,7 +68,8 @@ class JvmBuiltInsCustomizer(
     // Most this properties are lazy because they depends on KotlinBuiltIns initialization that depends on JvmBuiltInsSettings object
     private val notConsideredDeprecation by storageManager.createLazyValue {
         val annotation = moduleDescriptor.builtIns.createDeprecatedAnnotation(
-            "This member is not fully supported by Kotlin compiler, so it may be absent or have different signature in next major version"
+            "This member is not fully supported by Kotlin compiler, so it may be absent or have different signature in next major version",
+            forcePropagationDeprecationToOverrides = true,
         )
         Annotations.create(listOf(annotation))
     }
