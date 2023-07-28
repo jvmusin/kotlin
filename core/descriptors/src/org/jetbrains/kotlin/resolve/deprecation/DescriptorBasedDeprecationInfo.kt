@@ -12,6 +12,9 @@ abstract class DescriptorBasedDeprecationInfo : DeprecationInfo() {
     override val propagatesToOverrides: Boolean
         get() = true
 
+    open val forcePropagationToOverrides: Boolean
+        get() = false
+
     abstract val target: DeclarationDescriptor
 }
 
