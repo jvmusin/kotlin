@@ -1,3 +1,4 @@
+// FIR_IDENTICAL
 // LANGUAGE: -StopPropagatingDeprecationThroughOverrides
 // FILE: JavaClass.java
 
@@ -34,6 +35,6 @@ fun main(kotlinClass: KotlinClass, kotlinSubClass: KotlinSubClass) {
     kotlinClass.<!DEPRECATION!>foo<!>
     kotlinClass.<!DEPRECATION_ERROR!>bar<!>
 
-    kotlinSubClass.<!DEPRECATION!>foo<!>
+    kotlinSubClass.foo
     kotlinSubClass.bar
 }

@@ -46,6 +46,6 @@ fun main(j: JavaClass, k: KotlinClass, ks: KotlinSubClass) {
     ks.<!DEPRECATION!>getFoo<!>()
     ks.setFoo("")
 
-    ks.<!DEPRECATION!>foo<!>
+    ks.foo
     ks.foo = ""
 }
