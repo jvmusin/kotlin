@@ -55,7 +55,9 @@ class DeprecationResolver(
                 if (originalMethod == null) return DeprecationInfo.EMPTY
                 val originalMethodDeprecationInfo = deprecations(originalMethod)
                 val filteredDeprecations =
-                    originalMethodDeprecationInfo.deprecations.filter { it.deprecationLevel == DeprecationLevelValue.WARNING }
+                    originalMethodDeprecationInfo.deprecations.filter {
+                        it.deprecationLevel == DeprecationLevelValue.WARNING && it.forcePropagationToOverrides
+                    }
                 return originalMethodDeprecationInfo.copy(deprecations = filteredDeprecations)
             }
             descriptor is CallableMemberDescriptor -> {
