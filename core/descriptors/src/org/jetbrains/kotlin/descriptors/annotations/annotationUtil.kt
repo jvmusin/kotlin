@@ -58,6 +58,15 @@ fun KotlinBuiltIns.createDeprecatedAnnotation(
     )
 }
 
+// Used during kotlinx-serialization-cbor compilation
+@Suppress("unused")
+@Deprecated("This function is only there for binary compatibility", level = DeprecationLevel.HIDDEN)
+fun KotlinBuiltIns.createDeprecatedAnnotation(
+    message: String,
+    replaceWith: String = "",
+    level: String = "WARNING",
+): AnnotationDescriptor = createDeprecatedAnnotation(message, replaceWith, level, forcePropagationDeprecationToOverrides = false)
+
 private val DEPRECATED_MESSAGE_NAME = Name.identifier("message")
 private val DEPRECATED_REPLACE_WITH_NAME = Name.identifier("replaceWith")
 private val DEPRECATED_LEVEL_NAME = Name.identifier("level")
