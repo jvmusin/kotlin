@@ -261,7 +261,7 @@ enum class LanguageFeature(
     ProhibitCyclesInAnnotations(KOTLIN_1_9, kind = BUG_FIX), // KT-47932
     ForbidExtensionFunctionTypeOnNonFunctionTypes(KOTLIN_1_9, kind = BUG_FIX), // related to KT-43527
     ProhibitEnumDeclaringClass(KOTLIN_1_9, kind = BUG_FIX), // KT-49653
-    StopPropagatingDeprecationThroughOverrides(KOTLIN_1_9, kind = BUG_FIX), // KT-47902
+    StopPropagatingDeprecationThroughOverrides(KOTLIN_2_0, kind = BUG_FIX), // KT-47902
     ReportTypeVarianceConflictOnQualifierArguments(KOTLIN_1_9, kind = BUG_FIX), // KT-50947
     ReportErrorsOnRecursiveTypeInsidePlusAssignment(KOTLIN_1_9, kind = BUG_FIX), // KT-48546
     ForbidExtensionCallsOnInlineFunctionalParameters(KOTLIN_1_9, kind = BUG_FIX), // KT-52502
