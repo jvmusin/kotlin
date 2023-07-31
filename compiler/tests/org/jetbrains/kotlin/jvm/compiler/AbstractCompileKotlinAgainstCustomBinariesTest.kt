@@ -273,8 +273,7 @@ abstract class AbstractCompileKotlinAgainstCustomBinariesTest : AbstractKotlinCo
         doTestPreReleaseKotlinLibrary(K2JVMCompiler(), "library", tmpdir, "-Xallow-unstable-dependencies", "-Xskip-prerelease-check")
     }
 
-    // KT-60795 K2: missing INCOMPATIBLE_CLASS and corresponding CLI error
-    fun testWrongMetadataVersion() = muteForK2 {
+    fun testWrongMetadataVersion() {
         doTestKotlinLibraryWithWrongMetadataVersion("library", null)
     }
 
@@ -303,8 +302,7 @@ abstract class AbstractCompileKotlinAgainstCustomBinariesTest : AbstractKotlinCo
         doTestKotlinLibraryWithWrongMetadataVersion("library", null, "-Xskip-metadata-version-check")
     }
 
-    // KT-60795 K2: missing INCOMPATIBLE_CLASS and corresponding CLI error
-    fun testWrongMetadataVersionSkipPrereleaseCheckHasNoEffect() = muteForK2 {
+    fun testWrongMetadataVersionSkipPrereleaseCheckHasNoEffect() {
         doTestKotlinLibraryWithWrongMetadataVersion("library", null, "-Xskip-prerelease-check")
     }
 
@@ -337,9 +335,8 @@ abstract class AbstractCompileKotlinAgainstCustomBinariesTest : AbstractKotlinCo
         compileKotlin("source.kt", tmpdir, listOf(library))
     }
 
-    // KT-60795 K2: missing INCOMPATIBLE_CLASS and corresponding CLI error
-    fun testStrictMetadataVersionSemanticsOldVersion() = muteForK2 {
-        val nextMetadataVersion = JvmMetadataVersion.INSTANCE.next()
+    fun testStrictMetadataVersionSemanticsOldVersion() {
+        val nextMetadataVersion = languageVersion.toMetadataVersion().next()
         val library = compileLibrary(
             "library", additionalOptions = listOf("-Xgenerate-strict-metadata-version", "-Xmetadata-version=$nextMetadataVersion")
         )
