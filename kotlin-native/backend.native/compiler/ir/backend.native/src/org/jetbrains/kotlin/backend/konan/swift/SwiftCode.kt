@@ -33,6 +33,8 @@ sealed interface SwiftCode {
 
         val String.literal get() = Expression.StringLiteral(this)
 
+        fun String.genericParameter(constraint: Type? = null) = GenericParameter(this, constraint)
+
         val Number.literal get() = Expression.NumericLiteral(this)
     }
 
@@ -96,6 +98,8 @@ sealed interface SwiftCode {
                 val name: String,
                 val parameters: List<Parameter> = emptyList(),
                 val returnType: Type? = null,
+                val genericTypes: List<GenericParameter> = emptyList(),
+                val genericTypeConstraints: List<GenericConstraint> = emptyList(),
                 val isMutating: Boolean = false,
                 val isStatic: Boolean = false,
                 val isFinal: Boolean = false,
@@ -136,10 +140,12 @@ sealed interface SwiftCode {
                         "override ".takeIf { isOverride },
                         "func ",
                         name.escapeIdentifierIfNeeded(),
+                        genericTypes.takeIf { it.isNotEmpty() }?.render(),
                         parameters,
                         " async".takeIf { isAsync },
                         " throws".takeIf { isThrowing },
                         returnType?.render()?.let { " -> $it" },
+                        genericTypeConstraints.takeIf { it.isNotEmpty() }?.render()?.let { " $it"},
                         code?.renderAsBlock()?.let { " $it" }
                 ).joinToString(separator = "")
             }
@@ -390,6 +396,10 @@ sealed interface SwiftCode {
             }
         }
 
+        data class Type(val target: SwiftCode.Type) : Expression {
+            override fun render(): String = target.render()
+        }
+
         data class Call(val receiver: Expression, val arguments: List<Argument> = emptyList()) : Expression {
             override fun render(): String {
                 val receiver = receiver.render()
@@ -435,8 +445,22 @@ sealed interface SwiftCode {
     }
 
     sealed interface Type : SwiftCode {
-        data class Nominal(val name: String) : Type {
+        sealed interface PossiblyGeneric : Type
+
+        data class Nominal(val name: String) : PossiblyGeneric {
             override fun render(): String = name
+        }
+
+        data class Nested(val receiver: Type?, val name: String) : PossiblyGeneric {
+            override fun render(): String {
+                val receiver = receiver?.render() ?: ""
+                val name = name.escapeIdentifierIfNeeded()
+                return "$receiver.$name"
+            }
+        }
+
+        data class GenericInstantiation(val target: PossiblyGeneric, val arguments: List<Type>) : Type {
+            override fun render(): String = target.render() + arguments.render()
         }
 
         data class Optional(val type: Type, val isImplicitlyUnwrapped: Boolean = false) : Type {
@@ -542,6 +566,14 @@ sealed interface SwiftCode {
             return "@" + Expression.Identifier(name).render() + (arguments?.joinToString { it.render() }?.let { "($it)" } ?: "")
         }
     }
+
+    data class GenericParameter(val name: String, val constraint: Type?) : SwiftCode {
+        override fun render(): String = name + constraint?.let { ": ${it.render()}" }
+    }
+
+    data class GenericConstraint(val type: Type, val constraint: Type, val isExact: Boolean = false) : SwiftCode {
+        override fun render(): String = type.render() + (if (isExact) " == " else ": ") + constraint.render()
+    }
 }
 
 private fun String.escapeIdentifierIfNeeded(): String {
@@ -566,15 +598,34 @@ private fun String.parenthesizeIfNeccessary(): String {
 
 private fun String.isMultiline() = any { it == '\n' }
 
-private fun List<SwiftCode.Attribute>.render(separator: String = "\n", terminator: String = "\n"): String? {
-    return takeIf { it.isNotEmpty() }?.joinToString(separator = separator, postfix = terminator) { it.render() }
+private fun List<SwiftCode.Attribute>.render(): String? {
+    return takeIf { it.isNotEmpty() }?.joinToString(separator = "\n", postfix = "\n") { it.render() }
 }
+
+@JvmName("renderAsGenericArgumentsList")
+private fun List<SwiftCode.Type>.render() = joinToString(prefix = "<", postfix = ">") { it.render() }
+
+@JvmName("renderAsGenericParameterList")
+private fun List<SwiftCode.GenericParameter>.render() = joinToString(prefix = "<", postfix = ">") { it.render() }
+
+@JvmName("renderAsGenericWhereClause")
+private fun List<SwiftCode.GenericConstraint>.render() = joinToString(prefix = "where ") { it.render() }
+
+//region imports
 
 fun SwiftCode.File.Builder.import(name: String) = SwiftCode.Import.Module(name)
 
 fun SwiftCode.File.Builder.import(type: SwiftCode.Import.Symbol.Type, module: String, name: String) = SwiftCode.Import.Symbol(type, module, name)
 
+//endregion
+
 //region Declarations
+
+val SwiftCode.Builder.private get() = SwiftCode.Declaration.Visibility.PRIVATE
+val SwiftCode.Builder.fileprivate get() = SwiftCode.Declaration.Visibility.FILEPRIVATE
+val SwiftCode.Builder.internal get() = SwiftCode.Declaration.Visibility.INTERNAL
+val SwiftCode.Builder.public get() = SwiftCode.Declaration.Visibility.PUBLIC
+val SwiftCode.Builder.`package` get() = SwiftCode.Declaration.Visibility.PACKAGE
 
 fun SwiftCode.Builder.attribute(name: String, vararg arguments: SwiftCode.Argument): SwiftCode.Attribute {
     return SwiftCode.Attribute(name, arguments.takeIf { it.isNotEmpty() }?.toList())
@@ -584,8 +635,9 @@ fun SwiftCode.Builder.`typealias`(name: String, type: SwiftCode.Type) = SwiftCod
 
 fun SwiftCode.Builder.function(
         name: String,
+        genericTypes: List<SwiftCode.GenericParameter> = emptyList(),
         parameters: List<SwiftCode.Declaration.Function.Parameter> = emptyList(),
-        type: SwiftCode.Type? = null,
+        returnType: SwiftCode.Type? = null,
         isMutating: Boolean = false,
         isStatic: Boolean = false,
         isFinal: Boolean = false,
@@ -594,12 +646,15 @@ fun SwiftCode.Builder.function(
         isThrowing: Boolean = false,
         attributes: List<SwiftCode.Attribute> = emptyList(),
         visibility: SwiftCode.Declaration.Visibility = SwiftCode.Declaration.Visibility.INTERNAL,
+        genericTypeConstraints: List<SwiftCode.GenericConstraint> = emptyList(),
         body: (SwiftCode.StatementsBuilder.() -> Unit)? = null
 ): SwiftCode.Declaration.Function {
     return SwiftCode.Declaration.Function(
             name,
             parameters,
-            type,
+            returnType,
+            genericTypes,
+            genericTypeConstraints,
             isMutating,
             isStatic,
             isFinal,
@@ -613,7 +668,7 @@ fun SwiftCode.Builder.function(
 }
 
 fun SwiftCode.Builder.parameter(
-        argumentName: String?,
+        argumentName: String? = null,
         parameterName: String? = null,
         type: SwiftCode.Type,
         isInout: Boolean = false,
@@ -673,6 +728,10 @@ fun SwiftCode.Builder.set(
         body: SwiftCode.CodeBlock.Builder.() -> Unit
 ) = SwiftCode.Declaration.ComputedVariable.Accessor("set", argumentName = arg, SwiftCode.CodeBlock(body))
 
+fun SwiftCode.Type.isEqualTo(type: SwiftCode.Type) = SwiftCode.GenericConstraint(this, type, isExact = true)
+
+fun SwiftCode.Type.isSubtypeOf(type: SwiftCode.Type) = SwiftCode.GenericConstraint(this, type, isExact = false)
+
 //endregion
 
 //region Statements
@@ -703,6 +762,10 @@ fun SwiftCode.Expression.call(arguments: List<SwiftCode.Argument>) = SwiftCode.E
 
 fun SwiftCode.Expression.subscript(vararg arguments: SwiftCode.Argument) = SwiftCode.Expression.Subscript(this, arguments.toList())
 
+val SwiftCode.Type.expression get() = SwiftCode.Expression.Type(this)
+
+fun SwiftCode.Type.access(name: String) = expression.access(name)
+
 //endregion
 
 //region Types
@@ -721,6 +784,10 @@ val SwiftCode.Type.opaque: SwiftCode.Type.Opaque get() = SwiftCode.Type.Opaque(t
 
 val SwiftCode.Type.optional: SwiftCode.Type.Optional get() = SwiftCode.Type.Optional(this)
 
+fun SwiftCode.Type.contextualField(name: String) = SwiftCode.Type.Nested(this, name)
+
+fun SwiftCode.Type.PossiblyGeneric.withGenericArguments(vararg arguments: SwiftCode.Type) = SwiftCode.Type.GenericInstantiation(this, arguments.toList())
+
 fun SwiftCode.Builder.function(vararg argumentTypes: SwiftCode.Type, returnType: SwiftCode.Type) = SwiftCode.Type.Function(argumentTypes.toList(), returnType)
 
 fun SwiftCode.Builder.tuple(vararg types: SwiftCode.Type) = SwiftCode.Type.Tuple(types.toList())
@@ -732,5 +799,7 @@ fun SwiftCode.Builder.dictionary(key: SwiftCode.Type, value: SwiftCode.Type) = S
 fun SwiftCode.Builder.dictionary(types: Pair<SwiftCode.Type, SwiftCode.Type>) = SwiftCode.Type.Dictionary(types.first, types.second)
 
 fun SwiftCode.Builder.existential(vararg types: String) = SwiftCode.Type.Existential(types.toList())
+
+fun SwiftCode.Builder.contextualNestedType(name: String) = SwiftCode.Type.Nested(null, name)
 
 //endregion

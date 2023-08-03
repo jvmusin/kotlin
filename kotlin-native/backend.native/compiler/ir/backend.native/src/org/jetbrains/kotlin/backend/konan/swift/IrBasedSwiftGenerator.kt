@@ -8,12 +8,15 @@ package org.jetbrains.kotlin.backend.konan.swift
 import org.jetbrains.kotlin.backend.konan.llvm.KonanBinaryInterface
 import org.jetbrains.kotlin.builtins.PrimitiveType
 import org.jetbrains.kotlin.builtins.UnsignedType
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.explicitParameters
+import org.jetbrains.kotlin.ir.util.toIrConst
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
+import org.jetbrains.kotlin.utils.addToStdlib.cast
 
 /**
  * Generate a Swift API file for the given Kotlin IR module.
@@ -36,24 +39,92 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
         private val switchThreadStateToRunnable = CCode.build {
             function(void, "switchThreadStateToRunnable", attributes = listOf(asm("_Kotlin_mm_switchThreadStateRunnable")))
         }
+
+        // id Kotlin_SwiftExport_refToSwiftObject(ObjHeader *obj);
+        private val refToSwiftObject = CCode.build {
+            function(void.pointer, "refToSwiftObject", arguments = listOf(variable(void.pointer)), attributes = listOf(asm("_Kotlin_SwiftExport_refToSwiftObject")))
+        }
+
+        // ObjHeader *Kotlin_SwiftExport_swiftObjectToRef(id obj);
+        private val swiftObjectToRef = CCode.build {
+            function(void.pointer, "swiftObjectToRef", arguments = listOf(variable(void.pointer)), attributes = listOf(asm("_Kotlin_SwiftExport_swiftObjectToRef")))
+        }
+
+        private val bridgeFromKotlin = SwiftCode.build {
+            val T = "T".type
+            function(
+                    "bridgeFromKotlin",
+                    parameters = listOf(parameter(parameterName = "obj", type = "UnsafeMutableRawPointer".type)),
+                    genericTypes = listOf(T.name.genericParameter(constraint = "AnyObject".type)),
+                    returnType = T,
+                    attributes = listOf(attribute("inline", "__always".identifier)),
+                    visibility = private
+            ) {
+                +let("ptr", value = refToSwiftObject.name!!.identifier.call("obj".identifier))
+                +`return`("Unmanaged".type.withGenericArguments(T).access("fromOpaque").call("ptr".identifier).access("takeUnretainedValue").call())
+            }
+        }
+
+        private val bridgeToKotlin = SwiftCode.build {
+            val T = "T".type
+            function(
+                    "bridgeToKotlin",
+                    parameters = listOf(parameter(parameterName = "obj", type = T)),
+                    genericTypes = listOf(T.name.genericParameter(constraint = "AnyObject".type)),
+                    returnType = "UnsafeMutableRawPointer".type,
+                    attributes = listOf(attribute("inline", "__always".identifier)),
+                    visibility = private
+            ) {
+                +let("ptr", value = "Unmanaged".type.withGenericArguments(T).access("passUnretained").call("obj".identifier).access("toOpaque").call())
+                +`return`(swiftObjectToRef.name!!.identifier.call("ptr".identifier))
+            }
+        }
+    }
+
+    private sealed interface Bridge {
+        val swiftType: SwiftCode.Type
+        val cType: CCode.Type
+        fun from(expr: SwiftCode.Expression): SwiftCode.Expression
+        fun into(expr: SwiftCode.Expression): SwiftCode.Expression
+
+        data class Object(override val swiftType: SwiftCode.Type, override val cType: CCode.Type): Bridge {
+            override fun from(expr: SwiftCode.Expression) = SwiftCode.build { bridgeFromKotlin.name.identifier.call(expr) }
+            override fun into(expr: SwiftCode.Expression) = SwiftCode.build { bridgeToKotlin.name.identifier.call(expr) }
+        }
+
+        data class AsIs(override val swiftType: SwiftCode.Type, override val cType: CCode.Type): Bridge {
+            override fun from(expr: SwiftCode.Expression) = expr
+            override fun into(expr: SwiftCode.Expression) = expr
+        }
     }
 
     private val swiftImports = mutableListOf<SwiftCode.Import>(SwiftCode.Import.Module("Foundation"))
-    private val swiftDeclarations = mutableListOf<SwiftCode.Declaration>()
+    private val swiftDeclarations = mutableListOf<SwiftCode.Declaration>(
+            bridgeFromKotlin,
+            bridgeToKotlin,
+    )
 
     // FIXME: we shouldn't manually generate c headers for our existing code, but here we are.
-    private val cDeclarations = CCode.build {
+    private val cImports = CCode.build {
         mutableListOf<CCode>(
                 include("stdint.h"),
+        )
+    }
+    private val cDeclarations = CCode.build {
+        mutableListOf<CCode>(
                 declare(initRuntimeIfNeeded),
                 declare(switchThreadStateToRunnable),
                 declare(switchThreadStateToNative),
+                declare(refToSwiftObject),
+                declare(swiftObjectToRef),
         )
     }
 
     fun buildSwiftShimFile() = SwiftCode.File(swiftImports, swiftDeclarations)
 
-    fun buildSwiftBridgingHeader() = CCode.File(cDeclarations)
+    fun buildSwiftBridgingHeader() = CCode.build {
+        CCode.File(cImports + pragma("clang assume_nonnull begin") + cDeclarations + pragma("clang assume_nonnull end"))
+    }
 
     override fun visitElement(element: IrElement) {
         element.acceptChildrenVoid(this)
@@ -80,17 +151,22 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
         })
 
         swiftDeclarations.add(SwiftCode.build {
+            val returnTypeBridge = bridgeFor(declaration.returnType) ?: return
+            val parameterBridges = declaration.explicitParameters.map { it.name.asString() to (bridgeFor(it.type) ?: return) }
+
             function(
                     name,
-                    parameters = declaration.explicitParameters.map {
-                        parameter(it.name.asString(), type = mapTypeToSwift(it.type) ?: return)
-                    },
-                    type = mapTypeToSwift(declaration.returnType) ?: return,
-                    visibility = SwiftCode.Declaration.Visibility.PUBLIC
+                    parameters = parameterBridges.map { parameter(it.first, type = it.second.swiftType) },
+                    returnType = returnTypeBridge.swiftType,
+                    visibility = public
             ) {
                 +initRuntimeIfNeeded.name!!.identifier.call()
                 +switchThreadStateToRunnable.name!!.identifier.call()
-                val result = +let("result", value = cName.identifier.call(declaration.explicitParameters.map { it.name.asString().identifier }))
+                val result = +let(
+                        "result",
+                        type = returnTypeBridge.swiftType,
+                        value = returnTypeBridge.from(cName.identifier.call(parameterBridges.map { it.second.into(it.first.identifier) }))
+                )
                 +switchThreadStateToNative.name!!.identifier.call()
                 +`return`(result.name.identifier)
             }
@@ -107,33 +183,33 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
                 && !declaration.isInline
     }
 
-    private fun mapTypeToC(declaration: IrType): CCode.Type? {
-        return CCode.build {
-            when {
-                declaration.isPrimitiveType() -> if (declaration.isNullable()) null else when(declaration.getPrimitiveType()!!) {
-                    PrimitiveType.BYTE -> int8()
-                    PrimitiveType.BOOLEAN -> bool
-                    PrimitiveType.CHAR -> null // TODO: implement alongside with strings
-                    PrimitiveType.SHORT -> int16()
-                    PrimitiveType.INT -> int32()
-                    PrimitiveType.LONG -> int64()
-                    PrimitiveType.FLOAT -> float
-                    PrimitiveType.DOUBLE -> double
-                }
-                declaration.isUnsignedType() -> if (declaration.isNullable()) null else when(declaration.getUnsignedType()!!) {
-                    UnsignedType.UBYTE -> int8(isUnsigned = true)
-                    UnsignedType.USHORT -> int16(isUnsigned = true)
-                    UnsignedType.UINT -> int32(isUnsigned = true)
-                    UnsignedType.ULONG -> int64(isUnsigned = true)
-                }
-                declaration.isUnit() -> if (declaration.isNullable()) null else void
-                else -> null
+    private fun mapTypeToC(declaration: IrType): CCode.Type? = CCode.build {
+        when {
+            declaration.isUnit() -> if (declaration.isNullable()) null else void
+            declaration.isPrimitiveType() -> if (declaration.isNullable()) null else when(declaration.getPrimitiveType()!!) {
+                PrimitiveType.BYTE -> int8()
+                PrimitiveType.BOOLEAN -> bool
+                PrimitiveType.CHAR -> null // TODO: implement alongside with strings
+                PrimitiveType.SHORT -> int16()
+                PrimitiveType.INT -> int32()
+                PrimitiveType.LONG -> int64()
+                PrimitiveType.FLOAT -> float
+                PrimitiveType.DOUBLE -> double
             }
+            declaration.isUnsignedType() -> if (declaration.isNullable()) null else when(declaration.getUnsignedType()!!) {
+                UnsignedType.UBYTE -> int8(isUnsigned = true)
+                UnsignedType.USHORT -> int16(isUnsigned = true)
+                UnsignedType.UINT -> int32(isUnsigned = true)
+                UnsignedType.ULONG -> int64(isUnsigned = true)
+            }
+            declaration.isRegularClass -> void.pointer(nullability = CCode.Type.Pointer.Nullability.NULLABLE.takeIf { declaration.isNullable() })
+            else -> null
         }
     }
 
-    private fun mapTypeToSwift(declaration: IrType): SwiftCode.Type? {
-        return when {
+    private fun mapTypeToSwift(declaration: IrType): SwiftCode.Type? = SwiftCode.build {
+        when {
+            declaration.isUnit() -> if (declaration.isNullable()) null else "Void".type
             declaration.isPrimitiveType() -> if (declaration.isNullable()) null else when(declaration.getPrimitiveType()!!) {
                 PrimitiveType.BYTE -> "Int8"
                 PrimitiveType.BOOLEAN -> "Bool"
@@ -143,17 +219,30 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
                 PrimitiveType.LONG -> "Int64"
                 PrimitiveType.FLOAT -> "Float"
                 PrimitiveType.DOUBLE -> "Double"
-            }
+            }?.type
             declaration.isUnsignedType() -> if (declaration.isNullable()) null else when(declaration.getUnsignedType()!!) {
                 UnsignedType.UBYTE -> "UInt8"
                 UnsignedType.USHORT -> "UInt16"
                 UnsignedType.UINT -> "UInt32"
                 UnsignedType.ULONG -> "UInt64"
-            }
-            declaration.isUnit() -> if (declaration.isNullable()) null else "Void"
+            }.type
             else -> null
-        }?.let { SwiftCode.Type.Nominal("Swift.$it") }
+        }
+    }
+
+    private fun bridgeFor(declaration: IrType): Bridge? = SwiftCode.build {
+        val cType = mapTypeToC(declaration) ?: return null
+        val swiftType = mapTypeToSwift(declaration)?.let { return Bridge.AsIs(it, cType) }
+                ?: "NSObject".type // FIXME: generate concrete types
+
+        return when {
+            declaration.isRegularClass -> if (declaration.isNullable()) null else Bridge.Object(swiftType, cType)
+            else -> null
+        }
     }
 }
+
+private val IrType.isRegularClass: Boolean
+    get() = this.classOrNull?.owner?.kind == ClassKind.CLASS
 
 private fun CCode.Builder.asm(name: String) = rawAttribute("asm".identifier.call(name.literal))
