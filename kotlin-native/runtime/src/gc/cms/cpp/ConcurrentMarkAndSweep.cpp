@@ -101,7 +101,7 @@ mm::ThreadData& gc::ConcurrentMarkAndSweep::ThreadData::commonThreadData() const
 #ifndef CUSTOM_ALLOCATOR
 gc::ConcurrentMarkAndSweep::ConcurrentMarkAndSweep(
         ObjectFactory& objectFactory,
-        mm::ExtraObjectDataFactory& extraObjectDataFactory,
+        alloc::ExtraObjectDataFactory& extraObjectDataFactory,
         gcScheduler::GCScheduler& gcScheduler,
         bool mutatorsCooperate,
         std::size_t auxGCThreads) noexcept :
@@ -228,11 +228,11 @@ void gc::ConcurrentMarkAndSweep::PerformFullGC(int64_t epoch) noexcept {
     }
 
 #ifndef CUSTOM_ALLOCATOR
-    gc::SweepExtraObjects<DefaultSweepTraits<ObjectFactory>>(gcHandle, *extraObjectFactoryIterable);
+    alloc::SweepExtraObjects<alloc::DefaultSweepTraits<ObjectFactory>>(gcHandle, *extraObjectFactoryIterable);
     extraObjectFactoryIterable = std::nullopt;
-    auto finalizerQueue = gc::Sweep<DefaultSweepTraits<ObjectFactory>>(gcHandle, *objectFactoryIterable);
+    auto finalizerQueue = alloc::Sweep<alloc::DefaultSweepTraits<ObjectFactory>>(gcHandle, *objectFactoryIterable);
     objectFactoryIterable = std::nullopt;
-    kotlin::compactObjectPoolInMainThread();
+    alloc::compactObjectPoolInMainThread();
 #else
     // also sweeps extraObjects
     auto finalizerQueue = heap_.Sweep(gcHandle);
@@ -241,7 +241,7 @@ void gc::ConcurrentMarkAndSweep::PerformFullGC(int64_t epoch) noexcept {
     }
     finalizerQueue.TransferAllFrom(heap_.ExtractFinalizerQueue());
 #endif
-    scheduler.onGCFinish(epoch, allocatedBytes());
+    scheduler.onGCFinish(epoch, mm::GlobalData::Instance().gc().GetTotalHeapObjectsSizeBytes());
     state_.finish(epoch);
     gcHandle.finalizersScheduled(finalizerQueue.size());
     gcHandle.finished();
