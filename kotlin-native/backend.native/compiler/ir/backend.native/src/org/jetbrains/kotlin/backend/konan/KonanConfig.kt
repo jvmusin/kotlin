@@ -178,6 +178,9 @@ class KonanConfig(val project: Project, val configuration: CompilerConfiguration
         }
     }
 
+    val gcCheckMarkCorrectness: Boolean
+        get() = configuration.get(BinaryOptions.gcCheckMarkCorrectness) ?: false
+
     val irVerificationMode: IrVerificationMode
         get() = configuration.getNotNull(KonanConfigKeys.VERIFY_IR)
 
