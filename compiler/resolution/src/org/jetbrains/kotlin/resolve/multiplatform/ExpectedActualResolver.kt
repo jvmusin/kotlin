@@ -54,6 +54,35 @@ object ExpectedActualResolver {
         }
     }
 
+    fun findExpectForActualClassMember(
+        actual: MemberDescriptor,
+        actualClass: ClassDescriptor,
+        expectClass: ClassDescriptor,
+        context: ClassicExpectActualMatchingContext,
+    ): Map<ExpectActualCompatibility<MemberDescriptor>, List<MemberDescriptor>> {
+        val candidates = with(context) {
+            expectClass.getMembersForExpectClass(actual.name)
+        }
+        return when (actual) {
+            is CallableMemberDescriptor -> {
+                matchActualCallableAgainstPotentialExpects(
+                    actual,
+                    candidates.filterIsInstance<CallableMemberDescriptor>(),
+                    actualClass,
+                    context
+                )
+            }
+            is ClassDescriptor -> {
+                matchActualClassAgainstPotentialExpects(
+                    actual,
+                    candidates.filterIsInstance<ClassifierDescriptorWithTypeParameters>(),
+                    context
+                )
+            }
+            else -> emptyMap()
+        }
+    }
+
     // incremental compilation workaround for KT-60759
     fun findExpectedForActual_incrementalCompilationWorkaround(
         actual: MemberDescriptor,
