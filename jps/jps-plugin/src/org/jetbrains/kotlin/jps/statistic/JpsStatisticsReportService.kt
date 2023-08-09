@@ -11,10 +11,7 @@ import org.jetbrains.jps.incremental.CompileContext
 import org.jetbrains.kotlin.build.report.FileReportSettings
 import org.jetbrains.kotlin.build.report.HttpReportSettings
 import org.jetbrains.kotlin.build.report.metrics.*
-import org.jetbrains.kotlin.build.report.statistics.BuildDataType
-import org.jetbrains.kotlin.build.report.statistics.BuildStartParameters
-import org.jetbrains.kotlin.build.report.statistics.HttpReportService
-import org.jetbrains.kotlin.build.report.statistics.StatTag
+import org.jetbrains.kotlin.build.report.statistics.*
 import org.jetbrains.kotlin.build.report.statistics.file.FileReportService
 import org.jetbrains.kotlin.compilerRunner.JpsKotlinLogger
 import java.io.File
@@ -112,10 +109,11 @@ class JpsStatisticsReportService {
     }
 
     private val buildMetrics = HashMap<String, JpsBuilderMetricReporter>()
-    private val finishedModuleBuildMetrics = ArrayList<JpsBuilderMetricReporter>()
+    private val finishedModuleStatisticData = ArrayList<JpsCompileStatisticsData>()
     private val log = Logger.getInstance("#org.jetbrains.kotlin.jps.statistic.KotlinBuilderReportService")
     private val loggerAdapter = JpsKotlinLogger(log)
     private val httpService = httpReportSettings?.let { HttpReportService(it.url, it.user, it.password) }
+    private val httpReportExecutor = HttpReportServiceExecutor()
 
     fun moduleBuildStarted(chunk: ModuleChunk) {
         val moduleName = chunk.name
@@ -137,15 +135,16 @@ class JpsStatisticsReportService {
         }
         log.info("JpsStatisticsReportService: Service finished")
         metrics.buildFinish(chunk, context)
-        finishedModuleBuildMetrics.add(metrics)
+        val statisticData = metrics.flush(context)
+        finishedModuleStatisticData.add(statisticData)
+        httpService?.also { httpReportExecutor.sendData(it, loggerAdapter) { statisticData } }
     }
 
     fun buildFinish(context: CompileContext) {
-        val compileStatisticsData = finishedModuleBuildMetrics.map { it.flush(context) }
-        httpService?.sendData(compileStatisticsData, loggerAdapter)
+        httpService?.also { httpReportExecutor.close(it, loggerAdapter) }
         fileReportSettings?.also {
             FileReportService.reportBuildStatInFile(
-                it.buildReportDir, context.projectDescriptor.project.name, true, compileStatisticsData,
+                it.buildReportDir, context.projectDescriptor.project.name, true, finishedModuleStatisticData,
                 BuildStartParameters(tasks = listOf(jpsBuildTaskName)), emptyList(), loggerAdapter
             )
         }

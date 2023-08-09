@@ -9,18 +9,23 @@ import com.google.gson.Gson
 import org.jetbrains.kotlin.buildtools.api.KotlinLogger
 import java.io.IOException
 import java.io.Serializable
+import java.lang.AutoCloseable
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import kotlin.system.measureTimeMillis
 
 class HttpReportService(
     private val url: String,
     private val password: String?,
     private val user: String?,
+    internal val useExecutor: Boolean = true,
 ) : Serializable {
 
-    private var unableToSendHttpRequest = false
+    private var invalidUrl = false
     private var requestPreviousFailed = false
 
     private fun checkResponseAndLog(connection: HttpURLConnection, log: KotlinLogger) {
@@ -36,18 +41,19 @@ class HttpReportService(
         }
     }
 
-    fun sendData(data: Any, log: KotlinLogger) {
+    //call via HttpReportServiceExecutor.sendData
+    internal fun sendData(data: Any, log: KotlinLogger): Boolean {
         log.debug("Http report: send data $data")
         val elapsedTime = measureTimeMillis {
-            if (unableToSendHttpRequest) {
-                return
+            if (invalidUrl) {
+                return true
             }
             val connection = try {
                 URL(url).openConnection() as HttpURLConnection
             } catch (e: IOException) {
                 log.warn("Http report: Unable to open connection to ${url}: ${e.message}")
-                unableToSendHttpRequest = true
-                return
+                invalidUrl = true
+                return true
             }
 
             try {
@@ -66,12 +72,61 @@ class HttpReportService(
                 connection.connect()
                 checkResponseAndLog(connection, log)
             } catch (e: Exception) {
-                log.warn("Http report: Unexpected exception happened: '${e.message}': ${e.stackTraceToString()}")
-                unableToSendHttpRequest = true
+                log.info("Http report: Unexpected exception happened: '${e.message}': ${e.stackTraceToString()}")
+                return false
             } finally {
                 connection.disconnect()
             }
         }
         log.debug("Report statistic by http takes $elapsedTime ms")
+        return true
     }
+}
+
+//non-serializable part of HttpReportService
+class HttpReportServiceExecutor : AutoCloseable {
+    private val executorService: ExecutorService = Executors.newSingleThreadExecutor()
+    private val retryQueue: ConcurrentLinkedQueue<Any> = ConcurrentLinkedQueue<Any>()
+    override fun close() {
+        //It's expected that bad internet connection can cause a significant delay for big project
+        executorService.shutdown()
+    }
+
+    fun close(httpReportService: HttpReportService, log: KotlinLogger) {
+        resentData(httpReportService, log)
+        close()
+    }
+
+    private fun resentData(httpReportService: HttpReportService, log: KotlinLogger) {
+        submit(httpReportService.useExecutor) {
+            retryQueue.removeIf { httpReportService.sendData(it, log) }
+        }
+    }
+
+    private fun submit(
+        useExecutor: Boolean,
+        action: () -> Unit,
+    ) {
+        if (useExecutor) {
+            executorService.submit {
+                action.invoke()
+            }
+        } else {
+            action.invoke()
+        }
+    }
+
+    fun sendData(
+        httpReportService: HttpReportService,
+        log: KotlinLogger,
+        prepareData: () -> Any?,
+    ) {
+        submit(httpReportService.useExecutor) {
+            val data = prepareData.invoke()
+            if (data != null && !httpReportService.sendData(data, log)) {
+                retryQueue.add(data)
+            }
+        }
+    }
+
 }

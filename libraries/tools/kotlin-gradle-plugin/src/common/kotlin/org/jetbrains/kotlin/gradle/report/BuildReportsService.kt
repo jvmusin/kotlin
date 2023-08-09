@@ -9,12 +9,8 @@ import org.gradle.api.Project
 import org.gradle.api.logging.Logging
 import org.gradle.tooling.events.task.TaskFinishEvent
 import org.jetbrains.kotlin.build.report.metrics.ValueType
-import org.jetbrains.kotlin.build.report.statistics.HttpReportService
+import org.jetbrains.kotlin.build.report.statistics.*
 import org.jetbrains.kotlin.build.report.statistics.file.FileReportService
-import org.jetbrains.kotlin.build.report.statistics.formatSize
-import org.jetbrains.kotlin.build.report.statistics.BuildFinishStatisticsData
-import org.jetbrains.kotlin.build.report.statistics.BuildStartParameters
-import org.jetbrains.kotlin.build.report.statistics.StatTag
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.report.data.BuildExecutionData
 import org.jetbrains.kotlin.gradle.report.data.BuildOperationRecord
@@ -24,8 +20,6 @@ import java.io.File
 import java.net.InetAddress
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.system.measureTimeMillis
 
@@ -39,7 +33,7 @@ class BuildReportsService {
     private val startTime = System.nanoTime()
     private val buildUuid = UUID.randomUUID().toString()
 
-    private val executorService = TaskExecutor()
+    private val httpReportExecutorService = HttpReportServiceExecutor()
 
     private val tags = LinkedHashSet<StatTag>()
     private var customValues = 0 // doesn't need to be thread-safe
@@ -61,8 +55,8 @@ class BuildReportsService {
 
         val reportingSettings = parameters.reportingSettings
 
-        reportingSettings.httpReportSettings?.also {
-            executorService.submit(parameters.useExecutorForHttpReport) {
+        parameters.httpService?.also {
+            httpReportExecutorService.sendData(it, loggerAdapter) {
                 reportBuildFinish(parameters)
             }
         }
@@ -87,7 +81,9 @@ class BuildReportsService {
         }
 
         //It's expected that bad internet connection can cause a significant delay for big project
-        executorService.close()
+        parameters.httpService?.also {
+            httpReportExecutorService.close(it, loggerAdapter)
+        }
     }
 
     private fun transformOperationRecordsToCompileStatisticsData(
@@ -119,9 +115,9 @@ class BuildReportsService {
         addHttpReport(event, buildOperation, parameters)
     }
 
-    private fun reportBuildFinish(parameters: BuildReportParameters) {
+    private fun reportBuildFinish(parameters: BuildReportParameters): BuildFinishStatisticsData? {
         val httpReportSettings = parameters.reportingSettings.httpReportSettings
-            ?: return log.debug("Unable to send build finish event, httpReportSettings is null ")
+            ?: return log.debug("Unable to send build finish event, httpReportSettings is null ").let { null }
 
         val branchName = if (httpReportSettings.includeGitBranchName) {
             val process = ProcessBuilder("git", "rev-parse", "--abbrev-ref", "HEAD")
@@ -132,7 +128,7 @@ class BuildReportsService {
             process.inputStream.reader().readText()
         } else "is not set"
 
-        val buildFinishData = BuildFinishStatisticsData(
+        return BuildFinishStatisticsData(
             projectName = parameters.projectName,
             startParameters = parameters.startParameters
                 .includeVerboseEnvironment(parameters.reportingSettings.httpReportSettings.verboseEnvironment),
@@ -144,8 +140,6 @@ class BuildReportsService {
             tags = tags,
             gitBranch = branchName
         )
-
-        parameters.httpService?.sendData(buildFinishData, loggerAdapter)
     }
 
     private fun BuildStartParameters.includeVerboseEnvironment(verboseEnvironment: Boolean): BuildStartParameters {
@@ -168,7 +162,7 @@ class BuildReportsService {
         parameters: BuildReportParameters,
     ) {
         parameters.httpService?.also { httpService ->
-            val data =
+            httpReportExecutorService.sendData(httpService, loggerAdapter) {
                 prepareData(
                     event,
                     parameters.projectName,
@@ -179,11 +173,6 @@ class BuildReportsService {
                     onlyKotlinTask = true,
                     parameters.additionalTags
                 )
-
-            executorService.submit(parameters.useExecutorForHttpReport) {
-                data?.also {
-                    httpService.sendData(data, loggerAdapter)
-                }
             }
 
         }
@@ -425,29 +414,4 @@ data class BuildReportParameters(
     val projectName: String,
     val kotlinVersion: String,
     val additionalTags: Set<StatTag>,
-
-    //use for test only
-    val useExecutorForHttpReport: Boolean,
 )
-
-private class TaskExecutor : AutoCloseable {
-    private val executorService: ExecutorService = Executors.newSingleThreadExecutor()
-    override fun close() {
-        //It's expected that bad internet connection can cause a significant delay for big project
-        executorService.shutdown()
-    }
-
-    internal fun submit(
-        useExecutor: Boolean,
-        action: () -> Unit,
-    ) {
-        if (useExecutor) {
-            executorService.submit {
-                action.invoke()
-            }
-        } else {
-            action.invoke()
-        }
-    }
-
-}

@@ -188,7 +188,6 @@ abstract class BuildMetricsService : BuildService<BuildMetricsService.Parameters
             projectName = projectName.get(),
             kotlinVersion = kotlinVersion.get(),
             additionalTags = HashSet(buildConfigurationTags.get()),
-            useExecutorForHttpReport = useExecutorForHttpReport.get()
         )
 
         private fun registerIfAbsentImpl(
@@ -226,7 +225,9 @@ abstract class BuildMetricsService : BuildService<BuildMetricsService.Parameters
                         HttpReportService(
                             httpSettings.url,
                             httpSettings.user,
-                            httpSettings.password
+                            httpSettings.password,
+                            //for tests only
+                            useExecutorForHttpReport,
                         )
                     )
                     log.debug("Http report is enabled for ${httpSettings.url}")
@@ -234,7 +235,6 @@ abstract class BuildMetricsService : BuildService<BuildMetricsService.Parameters
                 it.parameters.projectDir.set(project.rootProject.layout.projectDirectory)
                 //init gradle tags for build scan and http reports
                 it.parameters.buildConfigurationTags.value(setupTags(project.gradle))
-                it.parameters.useExecutorForHttpReport.set(useExecutorForHttpReport)
             }.also {
                 subscribeForTaskEvents(project, it)
             }
