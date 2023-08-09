@@ -65,7 +65,7 @@ private:
  * Parallel mark dispatcher.
  * Mark can be performed on one or more threads.
  * Each threads wanting to participate have to execute an appropriate run- routine when ready to mark.
- * There must be exactly one executor of a `runMainInSTW()`.
+ * There must be exactly one executor of a `mark()`.
  *
  * Mark workers are able to balance work between each other through sharing/stealing.
  */
@@ -74,6 +74,17 @@ class ParallelMark : private Pinned {
     // work balancing parameters were chosen pretty arbitrary
     using ParallelProcessor = ParallelProcessor<MarkStackImpl, 512, 4096>;
 public:
+#ifndef CUSTOM_ALLOCATOR
+    struct SweepableHeapHandle {
+        ObjectFactory::Iterable objects_;
+        mm::ExtraObjectDataFactory::Iterable extraObjects_;
+    };
+#else
+    struct SweepableHeapHandle {
+        alloc::Heap& heap_;
+    };
+#endif
+
     class MarkTraits {
     public:
         using MarkQueue = ParallelProcessor::Worker;
@@ -109,24 +120,20 @@ public:
 
     explicit ParallelMark(bool mutatorsCooperate);
 
-    void beginMarkingEpoch(gc::GCHandle gcHandle);
-    void waitForThreadsPauseMutation() noexcept;
-    void endMarkingEpoch();
-
-    /** To be run by a single "main" GC thread during STW. */
-    void runMainInSTW();
+    /** To be run by a single "main" GC thread. */
+    SweepableHeapHandle runMain(gc::GCHandle gcHandle);
 
     /**
      * To be run by mutator threads that would like to participate in mark.
      * Will wait for STW detection by a "main" routine.
      */
-    void runOnMutator(mm::ThreadData& mutatorThread);
+    void onMutatorSuspension(mm::ThreadData& mutatorThread);
 
     /**
      * To be run by auxiliary GC threads.
      * Will wait for STW detection by a "main" routine.
      */
-    void runAuxiliary();
+    void onAuxiliaryThread();
 
     void requestShutdown();
     bool shutdownRequested() const;
@@ -141,6 +148,14 @@ public:
 
 private:
     GCHandle& gcHandle();
+
+    void beginMarkingEpoch(gc::GCHandle gcHandle);
+    void parallelMarkMain();
+    void endMarkingEpoch();
+    void processWeak();
+    SweepableHeapHandle isolateMarkedHeapAndFinishMark();
+
+    void waitForThreadsPauseMutation() noexcept;
 
     void setParallelismLevel(size_t maxParallelism, bool mutatorsCooperate);
 

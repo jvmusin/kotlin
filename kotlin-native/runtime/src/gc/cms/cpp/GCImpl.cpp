@@ -27,6 +27,7 @@ void gc::GC::ThreadData::PublishObjectFactory() noexcept {
 }
 
 void gc::GC::ThreadData::ClearForTests() noexcept {
+    // TODO
 #ifndef CUSTOM_ALLOCATOR
 //    impl_->extraObjectDataFactoryThreadQueue().Publish();
 //    impl_->objectFactoryThreadQueue().Publish();

@@ -92,7 +92,7 @@ private:
     GCStateHolder state_;
     FinalizerProcessor<FinalizerQueue, FinalizerQueueTraits> finalizerProcessor_;
 
-    mark::ParallelMark markDispatcher_;
+    mark::ParallelMark mark_;
     ScopedThread mainThread_;
     std_support::vector<ScopedThread> auxThreads_;
 };
