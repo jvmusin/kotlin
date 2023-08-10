@@ -143,7 +143,7 @@ private fun javaRetentionArguments(kotlinRetentionName: String?): List<KtNamedAn
         name = StandardNames.DEFAULT_VALUE_PARAMETER,
         expression = KtEnumEntryAnnotationValue(
             callableId = CallableId(
-                JvmNames.Annotations.Java.RetentionPolicy,
+                JvmNames.Annotations.RetentionPolicy,
                 Name.identifier(kotlinRetentionName ?: AnnotationRetention.RUNTIME.name),
             ),
             sourcePsi = null,
@@ -221,7 +221,7 @@ private fun SymbolLightJavaAnnotation.computeTargetJavaAnnotationArguments(): Li
                 values = javaTargetNames.map {
                     KtEnumEntryAnnotationValue(
                         callableId = CallableId(
-                            classId = JvmNames.Annotations.Java.ElementType,
+                            classId = JvmNames.Annotations.ElementType,
                             callableName = Name.identifier(it),
                         ),
                         sourcePsi = null,

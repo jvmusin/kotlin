@@ -10,5 +10,5 @@ import org.jetbrains.kotlin.name.JvmNames
 import org.jetbrains.kotlin.name.StandardClassIds
 
 object FirJvmPrimaryConstructorSuperTypeCheckerPlatformComponent : FirPrimaryConstructorSuperTypeCheckerPlatformComponent() {
-    override val supertypesThatDontNeedInitializationInSubtypesConstructors = setOf(StandardClassIds.Enum, JvmNames.Java.Record)
+    override val supertypesThatDontNeedInitializationInSubtypesConstructors = setOf(StandardClassIds.Enum, JvmNames.Record)
 }

@@ -59,7 +59,7 @@ internal class KtFirSymbolInfoProvider(
 
     val deprecationAnnotationSimpleNames: Set<String> = setOf(
         StandardClassIds.Annotations.Deprecated.shortClassName.asString(),
-        JvmNames.Annotations.Java.Deprecated.shortClassName.asString(),
+        JvmNames.Annotations.Deprecated.shortClassName.asString(),
         StandardClassIds.Annotations.SinceKotlin.shortClassName.asString(),
     )
 

@@ -21,11 +21,11 @@ object FirJvmAnnotationsPlatformSpecificSupportComponent : FirAnnotationsPlatfor
     override val requiredAnnotationsWithArguments = setOf(
         StandardClassIds.Annotations.Deprecated,
         StandardClassIds.Annotations.Target,
-        JvmNames.Annotations.Java.Target,
+        JvmNames.Annotations.Target,
     )
 
     override val requiredAnnotations = requiredAnnotationsWithArguments + setOf(
-        JvmNames.Annotations.Java.Deprecated,
+        JvmNames.Annotations.Deprecated,
         StandardClassIds.Annotations.DeprecatedSinceKotlin,
         StandardClassIds.Annotations.SinceKotlin,
         StandardClassIds.Annotations.WasExperimental,
@@ -39,13 +39,13 @@ object FirJvmAnnotationsPlatformSpecificSupportComponent : FirAnnotationsPlatfor
 
     override val deprecationAnnotationsWithOverridesPropagation = mapOf(
         StandardClassIds.Annotations.Deprecated to true,
-        JvmNames.Annotations.Java.Deprecated to false,
+        JvmNames.Annotations.Deprecated to false,
         StandardClassIds.Annotations.SinceKotlin to true,
     )
 
     override fun symbolContainsRepeatableAnnotation(symbol: FirClassLikeSymbol<*>, session: FirSession): Boolean {
         if (symbol.getAnnotationByClassId(StandardClassIds.Annotations.Repeatable, session) != null) return true
-        if (symbol.getAnnotationByClassId(JvmNames.Annotations.Java.Repeatable, session) != null ||
+        if (symbol.getAnnotationByClassId(JvmNames.Annotations.Repeatable, session) != null ||
             symbol.getAnnotationByClassId(JvmNames.Annotations.JvmRepeatable, session) != null
         ) {
             return session.languageVersionSettings.supportsFeature(LanguageFeature.RepeatableAnnotations) ||
@@ -63,7 +63,7 @@ object FirJvmAnnotationsPlatformSpecificSupportComponent : FirAnnotationsPlatfor
         if (propertyAnnotations.isEmpty() || property.backingField == null) return null
 
         val (newBackingFieldAnnotations, newPropertyAnnotations) = propertyAnnotations.partition {
-            it.toAnnotationClassIdSafe(session) == JvmNames.Annotations.Java.Deprecated
+            it.toAnnotationClassIdSafe(session) == JvmNames.Annotations.Deprecated
         }
 
         if (newBackingFieldAnnotations.isEmpty()) return null

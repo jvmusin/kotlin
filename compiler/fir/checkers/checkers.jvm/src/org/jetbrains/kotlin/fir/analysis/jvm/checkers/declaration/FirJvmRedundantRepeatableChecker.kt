@@ -21,7 +21,7 @@ object FirJvmRedundantRepeatableChecker : FirBasicDeclarationChecker() {
     override fun check(declaration: FirDeclaration, context: CheckerContext, reporter: DiagnosticReporter) {
         val kotlinRepeatable = declaration.getAnnotationByClassId(Repeatable, context.session)
         val javaRepeatable = declaration.getAnnotationByClassId(JvmRepeatable, context.session)
-            ?: declaration.getAnnotationByClassId(JvmNames.Annotations.Java.Repeatable, context.session)
+            ?: declaration.getAnnotationByClassId(JvmNames.Annotations.Repeatable, context.session)
 
         if (kotlinRepeatable != null && javaRepeatable != null) {
             reporter.reportOn(

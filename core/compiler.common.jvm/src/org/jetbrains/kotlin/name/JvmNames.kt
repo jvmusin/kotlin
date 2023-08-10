@@ -80,20 +80,16 @@ object JvmNames {
         val JvmVolatile = "Volatile".jvmId()
         val Throws = "Throws".jvmId()
 
-        object Java {
-            val Deprecated = "Deprecated".javaLangId()
-            val Repeatable = "Repeatable".javaAnnotationId()
-            val Retention = "Retention".javaAnnotationId()
-            val Documented = "Documented".javaAnnotationId()
-            val Target = "Target".javaAnnotationId()
-            val ElementType = "ElementType".javaAnnotationId()
-            val RetentionPolicy = "RetentionPolicy".javaAnnotationId()
-        }
+        val Deprecated = "Deprecated".javaLangId()
+        val Repeatable = "Repeatable".javaAnnotationId()
+        val Retention = "Retention".javaAnnotationId()
+        val Documented = "Documented".javaAnnotationId()
+        val Target = "Target".javaAnnotationId()
+        val ElementType = "ElementType".javaAnnotationId()
+        val RetentionPolicy = "RetentionPolicy".javaAnnotationId()
     }
 
-    object Java {
-        val Record = "Record".javaLangId()
-    }
+    val Record = "Record".javaLangId()
 }
 
 private fun String.jvmId() = ClassId(JvmNames.BASE_JVM_PACKAGE, Name.identifier(this))

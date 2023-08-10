@@ -30,7 +30,7 @@ object FirJvmRecordChecker : FirRegularClassChecker() {
     override fun check(declaration: FirRegularClass, context: CheckerContext, reporter: DiagnosticReporter) {
         declaration.superTypeRefs.firstOrNull()?.let { typeRef ->
             // compiler automatically adds java.lang.Record supertype, so we should check only for explicit type declarations
-            if (typeRef.source != null && typeRef.coneTypeSafe<ConeClassLikeType>()?.classId == JvmNames.Java.Record) {
+            if (typeRef.source != null && typeRef.coneTypeSafe<ConeClassLikeType>()?.classId == JvmNames.Record) {
                 reporter.reportOn(typeRef.source, FirJvmErrors.ILLEGAL_JAVA_LANG_RECORD_SUPERTYPE, context)
                 return
             }

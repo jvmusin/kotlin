@@ -553,7 +553,7 @@ internal fun KtSymbolWithMembers.createInnerClasses(
     if (containingClass is SymbolLightClassForAnnotationClass &&
         this is KtNamedClassOrObjectSymbol &&
         hasAnnotation(StandardClassIds.Annotations.Repeatable) &&
-        !hasAnnotation(JvmNames.Annotations.Java.Repeatable)
+        !hasAnnotation(JvmNames.Annotations.Repeatable)
     ) {
         result.add(SymbolLightClassForRepeatableAnnotationContainer(containingClass))
     }

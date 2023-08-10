@@ -83,7 +83,7 @@ object FirRepeatableAnnotationChecker : FirBasicDeclarationChecker() {
         }
 
         if (declaration is FirRegularClass) {
-            val javaRepeatable = annotations.getAnnotationByClassId(JvmNames.Annotations.Java.Repeatable, session)
+            val javaRepeatable = annotations.getAnnotationByClassId(JvmNames.Annotations.Repeatable, session)
             if (javaRepeatable != null) {
                 checkJavaRepeatableAnnotationDeclaration(javaRepeatable, declaration, context, reporter)
             } else {
@@ -97,7 +97,7 @@ object FirRepeatableAnnotationChecker : FirBasicDeclarationChecker() {
 
     private fun FirClassLikeSymbol<*>.resolveContainerAnnotation(session: FirSession): ClassId? {
         val repeatableAnnotation = getAnnotationByClassId(StandardClassIds.Annotations.Repeatable, session)
-            ?: getAnnotationByClassId(JvmNames.Annotations.Java.Repeatable, session)
+            ?: getAnnotationByClassId(JvmNames.Annotations.Repeatable, session)
             ?: return null
         return repeatableAnnotation.resolveContainerAnnotation()
     }

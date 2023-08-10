@@ -27,10 +27,10 @@ object FirJavaAnnotationsChecker : FirAnnotationChecker() {
 
     private val javaToKotlinNameMap: Map<ClassId, ClassId> =
         mapOf(
-            JvmNames.Annotations.Java.Target to Annotations.Target,
-            JvmNames.Annotations.Java.Retention to Annotations.Retention,
-            JvmNames.Annotations.Java.Deprecated to Annotations.Deprecated,
-            JvmNames.Annotations.Java.Documented to Annotations.MustBeDocumented,
+            JvmNames.Annotations.Target to Annotations.Target,
+            JvmNames.Annotations.Retention to Annotations.Retention,
+            JvmNames.Annotations.Deprecated to Annotations.Deprecated,
+            JvmNames.Annotations.Documented to Annotations.MustBeDocumented,
         )
 
     override fun check(expression: FirAnnotation, context: CheckerContext, reporter: DiagnosticReporter) {
