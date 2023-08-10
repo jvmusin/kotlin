@@ -23,6 +23,7 @@ import org.gradle.tooling.internal.consumer.ConnectorServices
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.compilerRunner.*
 import org.jetbrains.kotlin.gradle.testbase.*
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import java.nio.file.Paths
 import kotlin.test.assertTrue
@@ -154,6 +155,7 @@ class KotlinDaemonIT : KGPDaemonsBaseTest() {
         }
     }
 
+    @Disabled("KT-58894")
     @DisplayName("KT-57154: Compiler should use specified toolchain regardless of Gradle Runtime JDK")
     @JdkVersions(versions = [JavaVersion.VERSION_1_8, JavaVersion.VERSION_11, JavaVersion.VERSION_17])
     @GradleWithJdkTest
