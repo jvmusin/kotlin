@@ -39,7 +39,7 @@ object FirJsNameCharsChecker : FirBasicDeclarationChecker() {
             return
         }
 
-        val stableName = declaration.symbol.getStableNameInJavaScript(context.session) ?: return
+        val (stableName, _, _) = declaration.symbol.getStableNameInJavaScript(context.session) ?: return
         if ((sanitizeName(stableName) != stableName)) {
             reporter.reportOn(declaration.source, FirJsErrors.NAME_CONTAINS_ILLEGAL_CHARS, context)
         }

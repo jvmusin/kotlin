@@ -16,9 +16,6 @@ import org.jetbrains.kotlin.fir.analysis.js.checkers.isNativeObject
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
-import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
-import org.jetbrains.kotlin.fir.declarations.utils.isLocal
-import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 
 object FirJsBuiltinNameClashChecker : FirBasicDeclarationChecker() {
     private val PROHIBITED_STATIC_NAMES = setOf("prototype", "length", "\$metadata\$")
@@ -32,7 +29,7 @@ object FirJsBuiltinNameClashChecker : FirBasicDeclarationChecker() {
             return
         }
 
-        val stableName = declaration.symbol.getStableNameInJavaScript(context.session) ?: return
+        val (stableName, _, _) = declaration.symbol.getStableNameInJavaScript(context.session) ?: return
 
         if (declaration is FirClassLikeDeclaration && stableName in PROHIBITED_STATIC_NAMES) {
             reporter.reportOn(declaration.source, FirJsErrors.JS_BUILTIN_NAME_CLASH, "Function.$stableName", context)

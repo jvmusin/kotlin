@@ -10,12 +10,12 @@ package org.jetbrains.kotlin.fir.analysis.js.checkers
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
-import org.jetbrains.kotlin.descriptors.effectiveVisibility
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.*
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.utils.*
+import org.jetbrains.kotlin.fir.declarations.utils.isActual
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.isExternal
 import org.jetbrains.kotlin.fir.isSubstitutionOrIntersectionOverride
@@ -101,10 +101,21 @@ fun FirBasedSymbol<*>.isNativeInterface(session: FirSession): Boolean {
     return isNativeObject(session) && (fir as? FirClass)?.isInterface == true
 }
 
+fun FirBasedSymbol<*>.isLibraryObject(session: FirSession): Boolean {
+    return hasAnnotationOrInsideAnnotatedClass(JsStandardClassIds.Annotations.JsLibrary, session)
+}
+
 private val FirBasedSymbol<*>.isExpect
     get() = when (this) {
         is FirCallableSymbol<*> -> isExpect
         is FirClassSymbol<*> -> isExpect
+        else -> false
+    }
+
+private val FirBasedSymbol<*>.isActual
+    get() = when (this) {
+        is FirCallableSymbol<*> -> isActual
+        is FirClassSymbol<*> -> isActual
         else -> false
     }
 
@@ -154,6 +165,10 @@ fun FirBasedSymbol<*>.isPredefinedObject(context: CheckerContext) = isPredefined
 
 fun FirBasedSymbol<*>.isExportedObject(context: CheckerContext) = isExportedObject(context.session)
 
+fun FirBasedSymbol<*>.isLibraryObject(context: CheckerContext) = isLibraryObject(context.session)
+
+fun FirBasedSymbol<*>.isPresentInGeneratedCode(context: CheckerContext) = !isNativeObject(context) && !isLibraryObject(context)
+
 internal fun FirClass.superClassNotAny(session: FirSession) = superConeTypes
     .filterNot { it.isAny || it.isNullableAny }
     .find { it.toSymbol(session)?.classKind == ClassKind.CLASS }
@@ -162,11 +177,18 @@ internal fun getRootClassLikeSymbolOrSelf(symbol: FirBasedSymbol<*>, session: Fi
     return symbol.getContainingClassSymbol(session)?.let { getRootClassLikeSymbolOrSelf(it, session) } ?: symbol
 }
 
-internal fun FirBasedSymbol<*>.getStableNameInJavaScript(session: FirSession): String? {
+internal data class StableJavaScriptSymbolName(val name: String, val canBeMangled: Boolean, val symbol: FirBasedSymbol<*>)
+
+internal fun FirBasedSymbol<*>.getStableNameInJavaScript(session: FirSession): StableJavaScriptSymbolName? {
     val jsName = getJsName(session)
     if (jsName != null) {
-        return jsName
+        return StableJavaScriptSymbolName(jsName, false, this)
     }
+
+    if (this is FirPropertyAccessorSymbol) {
+        return null
+    }
+
     val hasStableNameInJavaScript = when {
         isEffectivelyExternal(session) -> true
         isExportedObject(session) -> true
@@ -191,9 +213,43 @@ internal fun FirBasedSymbol<*>.getStableNameInJavaScript(session: FirSession): S
         else -> false
     }
 
-    if (hasStableNameInJavaScript || hasPublicName) {
-        return (fir as? FirMemberDeclaration)?.nameOrSpecialName?.identifierOrNullIfSpecial
+    if (hasPublicName || hasStableNameInJavaScript) {
+        val name = (fir as? FirMemberDeclaration)?.nameOrSpecialName?.identifierOrNullIfSpecial
+        if (name != null) {
+            return StableJavaScriptSymbolName(name, !hasStableNameInJavaScript, this)
+        }
     }
     return null
 }
 
+private fun FirBasedSymbol<*>.doesJavaScriptManglingChangeName(): Boolean {
+    return when (this) {
+        is FirFunctionSymbol<*> -> valueParameterSymbols.isNotEmpty() || isExtension
+        is FirPropertySymbol -> isExtension
+        is FirClassLikeSymbol<*> -> classKind != ClassKind.OBJECT
+        else -> false
+    }
+}
+
+private fun shouldClashBeCaughtByCommonFrontendCheck(lhs: FirBasedSymbol<*>, rhs: FirBasedSymbol<*>): Boolean {
+    return when (lhs) {
+        is FirFunctionSymbol<*> -> rhs is FirFunctionSymbol<*>
+        is FirPropertySymbol -> rhs is FirPropertySymbol || (rhs as? FirClassLikeSymbol<*>)?.classKind == ClassKind.OBJECT
+        is FirClassLikeSymbol<*> -> rhs is FirPropertySymbol && lhs.classKind == ClassKind.OBJECT
+        else -> false
+    }
+}
+
+internal fun StableJavaScriptSymbolName.isClashedWith(other: StableJavaScriptSymbolName, context: CheckerContext): Boolean {
+    return when {
+        name != other.name -> false
+        symbol === other.symbol -> false
+        symbol.isActual != other.symbol.isActual -> false
+        symbol.isExpect != other.symbol.isExpect -> false
+        !symbol.isPresentInGeneratedCode(context) && !other.symbol.isPresentInGeneratedCode(context) -> false
+        canBeMangled && symbol.doesJavaScriptManglingChangeName() -> false
+        other.canBeMangled && other.symbol.doesJavaScriptManglingChangeName() -> false
+        canBeMangled && other.canBeMangled && shouldClashBeCaughtByCommonFrontendCheck(symbol, other.symbol) -> false
+        else -> true
+    }
+}

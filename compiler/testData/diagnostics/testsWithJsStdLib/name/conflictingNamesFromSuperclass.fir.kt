@@ -7,9 +7,9 @@ interface B {
 }
 
 class C : A, B {
-    override fun f() {}
+    <!JS_NAME_CLASH!>override fun f()<!> {}
 
-    override fun g() {}
+    <!JS_NAME_CLASH!>override fun g()<!> {}
 }
 
 abstract class D : A, B

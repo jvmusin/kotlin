@@ -704,6 +704,12 @@ public class DiagnosticsTestWithJsStdLibGenerated extends AbstractDiagnosticsTes
         }
 
         @Test
+        @TestMetadata("classMembersOverloading.kt")
+        public void testClassMembersOverloading() throws Exception {
+            runTest("compiler/testData/diagnostics/testsWithJsStdLib/name/classMembersOverloading.kt");
+        }
+
+        @Test
         @TestMetadata("conflictingNamesFromSuperclass.kt")
         public void testConflictingNamesFromSuperclass() throws Exception {
             runTest("compiler/testData/diagnostics/testsWithJsStdLib/name/conflictingNamesFromSuperclass.kt");
