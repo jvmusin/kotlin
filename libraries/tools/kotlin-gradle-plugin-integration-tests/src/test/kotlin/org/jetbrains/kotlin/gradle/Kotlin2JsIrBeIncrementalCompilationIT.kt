@@ -37,6 +37,7 @@ class Kotlin2JsK2IrBeIncrementalCompilationIT : Kotlin2JsIrBeIncrementalCompilat
     }
 }
 
+@JsGradlePluginTests
 abstract class Kotlin2JsIrBeIncrementalCompilationIT : KGPBaseTest() {
     override val defaultBuildOptions = BuildOptions(
         jsOptions = BuildOptions.JsOptions(
