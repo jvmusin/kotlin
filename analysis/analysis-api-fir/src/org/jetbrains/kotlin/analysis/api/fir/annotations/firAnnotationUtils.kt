@@ -65,7 +65,7 @@ internal fun annotationsByClassId(
             .mapIndexedToAnnotationApplication(useSiteTargetFilter, useSiteSession, classId) { index, annotation ->
                 annotation.asKtAnnotationApplicationForTargetAnnotation(useSiteSession, index)
             }
-    } else if (classId == JvmNames.Annotations.Target && firSymbol.fir.resolvePhase < FirResolvePhase.ANNOTATIONS_ARGUMENTS_MAPPING) {
+    } else if (classId == JvmStandardClassIds.Annotations.Target && firSymbol.fir.resolvePhase < FirResolvePhase.ANNOTATIONS_ARGUMENTS_MAPPING) {
         annotationContainer.resolvedAnnotationsWithClassIds(firSymbol)
             .mapIndexedToAnnotationApplication(useSiteTargetFilter, useSiteSession, classId) { index, annotation ->
                 annotation.asKtAnnotationApplicationForJavaTargetAnnotation(useSiteSession, index)
@@ -140,7 +140,7 @@ private fun FirAnnotation.asKtAnnotationApplicationForJavaTargetAnnotation(
 ): KtAnnotationApplicationWithArgumentsInfo = asKtAnnotationApplicationForAnnotationWithEnumArgument(
     useSiteSession = useSiteSession,
     index = index,
-    expectedEnumClassId = JvmNames.Annotations.ElementType,
+    expectedEnumClassId = JvmStandardClassIds.Annotations.ElementType,
     annotationParameterName = StandardClassIds.Annotations.ParameterNames.value,
     nameMapper = { ElementType.values().firstOrNull { enumValue -> enumValue.name == it }?.name },
 )

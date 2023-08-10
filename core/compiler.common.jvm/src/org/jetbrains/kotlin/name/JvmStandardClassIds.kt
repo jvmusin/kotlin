@@ -5,7 +5,7 @@
 
 package org.jetbrains.kotlin.name
 
-object JvmNames {
+object JvmStandardClassIds {
     val BASE_JVM_PACKAGE = StandardClassIds.BASE_KOTLIN_PACKAGE.child(Name.identifier("jvm"))
 
     @JvmField
@@ -92,7 +92,7 @@ object JvmNames {
     val Record = "Record".javaLangId()
 }
 
-private fun String.jvmId() = ClassId(JvmNames.BASE_JVM_PACKAGE, Name.identifier(this))
+private fun String.jvmId() = ClassId(JvmStandardClassIds.BASE_JVM_PACKAGE, Name.identifier(this))
 
 private val JAVA_LANG_PACKAGE = FqName("java.lang")
 private val JAVA_LANG_ANNOTATION_PACKAGE = JAVA_LANG_PACKAGE.child(Name.identifier("annotation"))
