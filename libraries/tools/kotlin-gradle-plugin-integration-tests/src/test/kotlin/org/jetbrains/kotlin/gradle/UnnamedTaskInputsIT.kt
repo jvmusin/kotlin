@@ -69,6 +69,7 @@ class UnnamedTaskInputsIT : KGPBaseTest() {
             enableLocalBuildCache(localBuildCacheDir)
 
             build("assemble") {
+                assertNoBuildWarnings(expectedK2KaptWarnings)
                 assertNoUnnamedInputsOutputs()
             }
         }
