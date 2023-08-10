@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.gradle
 
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.gradle.testbase.*
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import java.nio.file.Path
 import kotlin.io.path.*
@@ -96,11 +97,12 @@ open class IncrementalJavaChangePreciseCompilationBackupIT : IncrementalJavaChan
     override val defaultBuildOptions = super.defaultBuildOptions.copy(usePreciseOutputsBackup = true, keepIncrementalCompilationCachesInMemory = true)
 }
 
-@DisplayName("Incremental compilation via classpath snapshots with default precise java tracking")
+@DisplayName("Incremental compilation via history files with default precise java tracking")
 class IncrementalJavaChangeOldICIT : IncrementalJavaChangeDefaultIT() {
 
     override val defaultBuildOptions = super.defaultBuildOptions.copy(useGradleClasspathSnapshot = false)
 
+    @Disabled("KT-57147")
     @DisplayName("Lib: method signature ABI change")
     @GradleTest
     override fun testAbiChangeInLib_changeMethodSignature(gradleVersion: GradleVersion) {
@@ -126,6 +128,17 @@ class IncrementalJavaChangeOldICIT : IncrementalJavaChangeDefaultIT() {
         }
     }
 
+    @Disabled("KT-57147")
+    override fun testAbiChangeInLib_changeMethodSignature_tracked(gradleVersion: GradleVersion) {
+        super.testAbiChangeInLib_changeMethodSignature_tracked(gradleVersion)
+    }
+
+    @Disabled("KT-57147")
+    override fun testNonAbiChangeInLib_changeMethodBody_tracked(gradleVersion: GradleVersion) {
+        super.testNonAbiChangeInLib_changeMethodBody_tracked(gradleVersion)
+    }
+
+    @Disabled("KT-57147")
     @DisplayName("Lib: method body non-ABI change")
     @GradleTest
     override fun testNonAbiChangeInLib_changeMethodBody(gradleVersion: GradleVersion) {
