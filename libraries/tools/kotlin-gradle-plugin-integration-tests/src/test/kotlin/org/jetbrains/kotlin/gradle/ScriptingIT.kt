@@ -9,6 +9,7 @@ import org.gradle.api.logging.LogLevel
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.gradle.scripting.internal.ScriptingGradleSubplugin
 import org.jetbrains.kotlin.gradle.testbase.*
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.condition.DisabledOnOs
 import org.junit.jupiter.api.condition.OS
@@ -23,6 +24,7 @@ import kotlin.io.path.relativeTo
 @GradleTestVersions(maxVersion = TestVersions.Gradle.G_7_3) // workaround for a Gradle synchronization bug: https://github.com/gradle/gradle/issues/23450
 class ScriptingIT : KGPBaseTest() {
 
+    @Disabled("KT-61137")
     @DisplayName("basic script is working")
     @GradleTest
     fun testScripting(gradleVersion: GradleVersion) {
@@ -48,6 +50,7 @@ class ScriptingIT : KGPBaseTest() {
         testScriptingCustomExtensionImpl(gradleVersion, withIC = false)
     }
 
+    @Disabled("KT-61137")
     @DisplayName("With custom file extension compiled incremental")
     @GradleTest
     fun testScriptingCustomExtensionIncremental(gradleVersion: GradleVersion) {
