@@ -5,3 +5,9 @@ plugins {
 dependencies {
     implementation project(':script-template')
 }
+
+tasks.named("compileKotlin", org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configure {
+    compilerOptions {
+        freeCompilerArgs.add("-Xuse-fir-lt=false") // Scripts are not yet supported with K2 in LightTree mode
+    }
+}
