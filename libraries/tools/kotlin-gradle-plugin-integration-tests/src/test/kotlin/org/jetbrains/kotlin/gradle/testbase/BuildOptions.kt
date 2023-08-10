@@ -52,7 +52,7 @@ data class BuildOptions(
     val runViaBuildToolsApi: Boolean? = null,
 ) {
     val isK2ByDefault: Boolean
-        get() = kotlinVersion.startsWith("2")
+        get() = true // TODO: change to kotlinVersion.startsWith("2")
 
     fun copyEnsuringK1(): BuildOptions =
         copy(languageVersion = if (isK2ByDefault) "1.9" else null)
