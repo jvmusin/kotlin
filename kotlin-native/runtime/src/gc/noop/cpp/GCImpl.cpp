@@ -5,6 +5,8 @@
 
 #include "GCImpl.hpp"
 
+#include <memory>
+
 #include "Common.h"
 #include "GC.hpp"
 #include "GCStatistics.hpp"
@@ -12,11 +14,10 @@
 #include "ObjectAlloc.hpp"
 #include "ObjectOps.hpp"
 #include "ThreadData.hpp"
-#include "std_support/Memory.hpp"
 
 using namespace kotlin;
 
-gc::GC::ThreadData::ThreadData(GC& gc, mm::ThreadData& threadData) noexcept : impl_(std_support::make_unique<Impl>(gc, threadData)) {}
+gc::GC::ThreadData::ThreadData(GC& gc, mm::ThreadData& threadData) noexcept : impl_(std::make_unique<Impl>(gc, threadData)) {}
 
 gc::GC::ThreadData::~ThreadData() = default;
 
@@ -73,7 +74,7 @@ void gc::GC::ThreadData::OnSuspendForGC() noexcept { }
 
 void gc::GC::ThreadData::safePoint() noexcept {}
 
-gc::GC::GC(gcScheduler::GCScheduler&) noexcept : impl_(std_support::make_unique<Impl>()) {}
+gc::GC::GC(gcScheduler::GCScheduler&) noexcept : impl_(std::make_unique<Impl>()) {}
 
 gc::GC::~GC() = default;
 

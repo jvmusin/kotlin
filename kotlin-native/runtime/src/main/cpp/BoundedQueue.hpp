@@ -29,6 +29,7 @@
 #pragma once
 
 #include <atomic>
+#include <optional>
 
 #include "Utils.hpp"
 #include "ManuallyScoped.hpp"

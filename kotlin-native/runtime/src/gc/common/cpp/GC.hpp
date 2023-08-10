@@ -7,12 +7,12 @@
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 
 #include "ExtraObjectData.hpp"
 #include "GCScheduler.hpp"
 #include "Memory.h"
 #include "Utils.hpp"
-#include "std_support/Memory.hpp"
 
 namespace kotlin {
 
@@ -48,7 +48,7 @@ public:
         void safePoint() noexcept;
 
     private:
-        std_support::unique_ptr<Impl> impl_;
+        std::unique_ptr<Impl> impl_;
     };
 
     // Header to be placed before each heap object. GC will use this to keep its data if needed.
@@ -86,7 +86,7 @@ public:
     static void DestroyExtraObjectData(mm::ExtraObjectData& extraObject) noexcept;
 
 private:
-    std_support::unique_ptr<Impl> impl_;
+    std::unique_ptr<Impl> impl_;
 };
 
 bool isMarked(ObjHeader* object) noexcept;

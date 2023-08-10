@@ -5,17 +5,18 @@
 
 #include "GCImpl.hpp"
 
+#include <memory>
+
 #include "ConcurrentMarkAndSweep.hpp"
 #include "GC.hpp"
 #include "GCStatistics.hpp"
 #include "MarkAndSweepUtils.hpp"
 #include "ObjectAlloc.hpp"
 #include "ObjectOps.hpp"
-#include "std_support/Memory.hpp"
 
 using namespace kotlin;
 
-gc::GC::ThreadData::ThreadData(GC& gc, mm::ThreadData& threadData) noexcept : impl_(std_support::make_unique<Impl>(gc, threadData)) {}
+gc::GC::ThreadData::ThreadData(GC& gc, mm::ThreadData& threadData) noexcept : impl_(std::make_unique<Impl>(gc, threadData)) {}
 
 gc::GC::ThreadData::~ThreadData() = default;
 
@@ -76,7 +77,7 @@ void gc::GC::ThreadData::safePoint() noexcept {
     impl_->gc().safePoint();
 }
 
-gc::GC::GC(gcScheduler::GCScheduler& gcScheduler) noexcept : impl_(std_support::make_unique<Impl>(gcScheduler)) {}
+gc::GC::GC(gcScheduler::GCScheduler& gcScheduler) noexcept : impl_(std::make_unique<Impl>(gcScheduler)) {}
 
 gc::GC::~GC() = default;
 

@@ -17,6 +17,7 @@
 #ifdef KONAN_ANDROID
 #include <android/log.h>
 #endif
+#include <cstdlib>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -34,7 +35,6 @@
 #include "CompilerConstants.hpp"
 #include "Porting.h"
 #include "KAssert.h"
-#include "std_support/CStdlib.hpp"
 
 using namespace kotlin;
 
@@ -185,7 +185,7 @@ static void onThreadExitCallback(void* value) {
   while (record != nullptr) {
     record->destructor(record->destructorParameter);
     auto next = record->next;
-    std_support::free(record);
+    std::free(record);
     record = next;
   }
 }
@@ -213,7 +213,7 @@ static void onThreadExitInit() {
 void onThreadExit(void (*destructor)(void*), void* destructorParameter) {
   // We cannot use pthread_cleanup_push() as it is lexical scope bound.
   pthread_once(&terminationKeyOnceControl, onThreadExitInit);
-  DestructorRecord* destructorRecord = (DestructorRecord*)std_support::calloc(1, sizeof(DestructorRecord));
+  DestructorRecord* destructorRecord = (DestructorRecord*)std::calloc(1, sizeof(DestructorRecord));
   destructorRecord->destructor = destructor;
   destructorRecord->destructorParameter = destructorParameter;
   destructorRecord->next =

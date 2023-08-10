@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <memory>
 
 #include "AllocatorImpl.hpp"
 #include "Barriers.hpp"
@@ -22,7 +23,6 @@
 #include "ThreadData.hpp"
 #include "Types.h"
 #include "Utils.hpp"
-#include "std_support/Memory.hpp"
 
 namespace kotlin {
 namespace gc {
@@ -105,7 +105,7 @@ private:
 
     mark::ParallelMark markDispatcher_;
     ScopedThread mainThread_;
-    std_support::vector<ScopedThread> auxThreads_;
+    std::vector<ScopedThread> auxThreads_;
 };
 
 } // namespace gc

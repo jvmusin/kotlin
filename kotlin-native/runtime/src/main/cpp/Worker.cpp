@@ -15,8 +15,12 @@
  */
 
 #include <cstdlib>
+#include <deque>
+#include <set>
 #include <string.h>
 #include <stdio.h>
+#include <unordered_map>
+#include <vector>
 
 #include <pthread.h>
 #include "PthreadUtils.h"
@@ -30,11 +34,6 @@
 #include "Runtime.h"
 #include "Types.h"
 #include "Worker.h"
-#include "std_support/Deque.hpp"
-#include "std_support/New.hpp"
-#include "std_support/Set.hpp"
-#include "std_support/UnorderedMap.hpp"
-#include "std_support/Vector.hpp"
 
 using namespace kotlin;
 
@@ -130,7 +129,7 @@ struct JobCompare {
 // Using multiset instead of regular set, because we compare the jobs only by `whenExecute`.
 // So if `whenExecute` of two different jobs is the same, the jobs are considered equivalent,
 // and set would simply drop one of them.
-typedef std_support::multiset<Job, JobCompare> DelayedJobSet;
+typedef std::multiset<Job, JobCompare> DelayedJobSet;
 
 }  // namespace
 
@@ -197,7 +196,7 @@ class Worker {
 
   KInt id_;
   WorkerKind kind_;
-  std_support::deque<Job> queue_;
+  std::deque<Job> queue_;
   DelayedJobSet delayed_;
   // Stable pointer with worker's name.
   KNativePtr name_;
@@ -365,7 +364,7 @@ class State {
     Worker* worker = nullptr;
     {
       Locker locker(&lock_);
-      worker = new (std_support::kalloc) Worker(nextWorkerId(), exceptionHandling, customName, kind);
+      worker = new Worker(nextWorkerId(), exceptionHandling, customName, kind);
       if (worker == nullptr) return nullptr;
       workers_[worker->id()] = worker;
     }
@@ -398,7 +397,7 @@ class State {
       }
     }
     GC_UnregisterWorker(worker);
-    std_support::kdelete(worker);
+    delete worker;
   }
 
   Future* addJobToWorkerUnlocked(
@@ -411,7 +410,7 @@ class State {
     if (it == workers_.end()) return nullptr;
     worker = it->second;
 
-    future = new (std_support::kalloc) Future(nextFutureId());
+    future = new Future(nextFutureId());
     futures_[future->id()] = future;
 
     Job job;
@@ -513,7 +512,7 @@ class State {
        auto it = futures_.find(id);
        if (it != futures_.end()) {
          futures_.erase(it);
-         std_support::kdelete(future);
+         delete future;
        }
     }
 
@@ -587,7 +586,7 @@ class State {
 
   template <typename F>
   void waitNativeWorkersTerminationUnlocked(bool checkLeaks, F waitForWorker) {
-      std_support::vector<std::pair<KInt, pthread_t>> workersToWait;
+      std::vector<std::pair<KInt, pthread_t>> workersToWait;
       {
           Locker locker(&lock_);
 
@@ -641,7 +640,7 @@ class State {
   }
 
   OBJ_GETTER0(getActiveWorkers) {
-      std_support::vector<KInt> workers;
+      std::vector<KInt> workers;
       {
           Locker locker(&lock_);
 
@@ -659,9 +658,9 @@ class State {
  private:
   pthread_mutex_t lock_;
   pthread_cond_t cond_;
-  std_support::unordered_map<KInt, Future*> futures_;
-  std_support::unordered_map<KInt, Worker*> workers_;
-  std_support::unordered_map<KInt, pthread_t> terminating_native_workers_;
+  std::unordered_map<KInt, Future*> futures_;
+  std::unordered_map<KInt, Worker*> workers_;
+  std::unordered_map<KInt, pthread_t> terminating_native_workers_;
   KInt currentWorkerId_;
   KInt currentFutureId_;
   KInt currentVersion_;
@@ -674,11 +673,11 @@ State* theState() {
     return state;
   }
 
-  State* result = new (std_support::kalloc) State();
+  State* result = new State();
 
   State* old = __sync_val_compare_and_swap(&state, nullptr, result);
   if (old != nullptr) {
-    std_support::kdelete(result);
+    delete result;
     // Someone else inited this data.
     return old;
   }

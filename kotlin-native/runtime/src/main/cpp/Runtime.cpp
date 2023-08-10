@@ -17,7 +17,6 @@
 #include "RuntimePrivate.hpp"
 #include "Worker.h"
 #include "KString.h"
-#include "std_support/New.hpp"
 #include <atomic>
 #include <cstdlib>
 #include <thread>
@@ -87,7 +86,7 @@ volatile GlobalRuntimeStatus globalRuntimeStatus = kGlobalRuntimeUninitialized;
 RuntimeState* initRuntime() {
   SetKonanTerminateHandler();
   initObjectPool();
-  RuntimeState* result = new (std_support::kalloc) RuntimeState();
+  RuntimeState* result = new RuntimeState();
   if (!result) return kInvalidRuntime;
   RuntimeCheck(!isValidRuntime(), "No active runtimes allowed");
   ::runtimeState = result;
@@ -178,7 +177,7 @@ void deinitRuntime(RuntimeState* state, bool destroyRuntime) {
   // Do not use ThreadStateGuard because memoryState will be destroyed during DeinitMemory.
   kotlin::SwitchThreadState(state->memoryState, kotlin::ThreadState::kNative);
   DeinitMemory(state->memoryState, destroyRuntime);
-  std_support::kdelete(state);
+  delete state;
   WorkerDestroyThreadDataIfNeeded(workerId);
   ::runtimeState = kInvalidRuntime;
 }
