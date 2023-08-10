@@ -204,20 +204,6 @@ bitcode {
             onlyIf { target.supportsLibBacktrace() }
         }
 
-        module("strict") {
-            headersDirs.from(files("src/main/cpp"))
-            sourceSets {
-                main {}
-            }
-        }
-
-        module("relaxed") {
-            headersDirs.from(files("src/main/cpp"))
-            sourceSets {
-                main {}
-            }
-        }
-
         module("profileRuntime") {
             srcRoot.set(layout.projectDirectory.dir("src/profile_runtime"))
             sourceSets {
@@ -238,15 +224,6 @@ bitcode {
                 testFixtures {
                     inputFiles.include("**/*.cpp", "**/*.mm")
                 }
-            }
-        }
-
-        module("legacy_memory_manager") {
-            srcRoot.set(layout.projectDirectory.dir("src/legacymm"))
-            headersDirs.from(files("src/main/cpp"))
-            sourceSets {
-                main {}
-                testFixtures {}
             }
         }
 
