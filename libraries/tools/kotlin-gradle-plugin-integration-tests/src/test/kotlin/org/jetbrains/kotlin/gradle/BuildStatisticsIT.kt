@@ -32,7 +32,7 @@ class BuildStatisticsIT : KGPBaseTest() {
         project("incrementalMultiproject", gradleVersion) {
             enableStatisticReports(BuildReportType.HTTP, "https://invalid")
             build("compileKotlin", "-Pkotlin.build.report.http.use.executor=false", buildOptions = defaultBuildOptions.copy(logLevel = LogLevel.DEBUG)) {
-                assertOutputContainsExactlyTimes("Http report: Unexpected exception happened: ")
+                assertOutputContainsExactlyTimes("Http report: Unexpected exception happened: ", 6) //twice for every module and at the end of the build
             }
         }
     }
