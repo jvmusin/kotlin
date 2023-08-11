@@ -17,8 +17,8 @@ import kotlin.io.path.exists
 open class CompilerPluginsIncrementalIT : KGPBaseTest() {
     override val defaultBuildOptions: BuildOptions
         get() = super.defaultBuildOptions.copy(
-            incremental = true
-        )
+            incremental = true,
+        ).copyEnsuringK1()
 
     @DisabledOnOs(OS.WINDOWS, disabledReason = "Kotlin compiler holds an open file descriptor to plugin jar file")
     @DisplayName("KT-38570: After changing compiler plugin code, next incremental build picks it up")
