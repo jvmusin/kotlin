@@ -72,7 +72,7 @@ class MainKtsTest {
         val resErr = evalFile(File("$TEST_DATA_ROOT/resolve-error-hamcrest-via-junit.main.kts"))
         Assert.assertTrue(
             resErr is ResultWithDiagnostics.Failure &&
-                    resErr.reports.any { it.message == "Unresolved reference: hamcrest" }
+                    resErr.reports.any { it.message.contains("Unresolved reference") && it.message.contains("hamcrest") }
         )
     }
 
