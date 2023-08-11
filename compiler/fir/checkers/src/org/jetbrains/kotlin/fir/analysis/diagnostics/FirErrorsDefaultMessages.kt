@@ -769,7 +769,7 @@ object FirErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         map.put(NO_THIS, "'this' is not defined in this context.")
 
         // Super
-        map.put(SUPER_IS_NOT_AN_EXPRESSION, "''super'' cannot be a callee.")
+        map.put(SUPER_IS_NOT_AN_EXPRESSION, "'super' cannot be a callee.")
         map.put(SUPER_NOT_AVAILABLE, "No supertypes are accessible in this context.")
         map.put(ABSTRACT_SUPER_CALL, "Abstract member cannot be accessed directly.")
         map.put(
@@ -1920,7 +1920,7 @@ object FirErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         map.put(AMBIGUOUS_EXPECTS, "''{0}'' has several compatible expect declarations in modules {1}.", SYMBOL, COLLECTION(MODULE_DATA))
         map.put(
             NO_ACTUAL_CLASS_MEMBER_FOR_EXPECTED_CLASS,
-            "Actual class ''{0}'' has no corresponding members for expected class members:{1}.",
+            "Actual class ''{0}'' has no corresponding members for expected class members:{1}",
             SYMBOL,
             FirIncompatibleExpectedActualClassScopesRenderer.TEXT
         )

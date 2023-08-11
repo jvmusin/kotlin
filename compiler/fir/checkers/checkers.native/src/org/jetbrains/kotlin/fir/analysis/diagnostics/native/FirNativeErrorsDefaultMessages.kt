@@ -43,8 +43,8 @@ import org.jetbrains.kotlin.fir.analysis.diagnostics.native.FirNativeErrors.UNCH
 object FirNativeErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
     override val MAP = KtDiagnosticFactoryToRendererMap("FIR.").also { map ->
         map.put(THROWS_LIST_EMPTY, "Throws must have a non-empty class list.")
-        map.put(INCOMPATIBLE_THROWS_OVERRIDE, "Member overrides different '@Throws' filter from ''{0}''.", SYMBOL)
-        map.put(INCOMPATIBLE_THROWS_INHERITED, "Member inherits different '@Throws' filters from ''{0}''.", SYMBOLS)
+        map.put(INCOMPATIBLE_THROWS_OVERRIDE, "Member overrides different ''@Throws'' filter from ''{0}''.", SYMBOL)
+        map.put(INCOMPATIBLE_THROWS_INHERITED, "Member inherits different ''@Throws'' filters from ''{0}''.", SYMBOLS)
         map.put(
             MISSING_EXCEPTION_IN_THROWS_ON_SUSPEND, "@Throws on suspend declaration must have ''{0}'' (or any of its superclasses) listed.",
             TO_STRING
@@ -78,8 +78,8 @@ object FirNativeErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         map.put(INAPPLICABLE_OBJC_NAME, "'@ObjCName' is not applicable to overrides.")
         map.put(INVALID_OBJC_NAME, "'@ObjCName' should have a name and/or swiftName.")
         map.put(EMPTY_OBJC_NAME, "Empty '@ObjCName' names aren't supported.")
-        map.put(INVALID_OBJC_NAME_CHARS, "'@ObjCName' contains illegal characters: {0}.", TO_STRING)
-        map.put(INVALID_OBJC_NAME_FIRST_CHAR, "'@ObjCName' contains illegal first characters: {0}.", TO_STRING)
+        map.put(INVALID_OBJC_NAME_CHARS, "''@ObjCName'' contains illegal characters ''{0}''.", TO_STRING)
+        map.put(INVALID_OBJC_NAME_FIRST_CHAR, "''@ObjCName'' contains illegal first characters ''{0}''.", TO_STRING)
         map.put(INCOMPATIBLE_OBJC_NAME_OVERRIDE, "Member ''{0}'' inherits inconsistent ''@ObjCName'' from ''{1}''.", SYMBOL, SYMBOLS)
         map.put(INAPPLICABLE_EXACT_OBJC_NAME, "Exact '@ObjCName' is only applicable to classes, objects, and interfaces.")
         map.put(MISSING_EXACT_OBJC_NAME, "Exact '@ObjCName' is required to have an ObjC name.")
@@ -105,7 +105,7 @@ object FirNativeErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         )
         map.put(
             FORWARD_DECLARATION_AS_CLASS_LITERAL,
-            "Can't refer to forward declaration ''{0}'' from class literal.",
+            "Cannot refer to forward declaration ''{0}'' from class literal.",
             FirDiagnosticRenderers.RENDER_TYPE
         )
     }
