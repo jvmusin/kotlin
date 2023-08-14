@@ -47,7 +47,7 @@ class KaptJavaFileManager(context: Context, private val shouldRecordFileAccess: 
         val filteredList = LinkedList<JavaFileObject>()
         for (file in originalList)
             if (!shouldPackageBeFiltered || !shouldBeFiltered(packageName, file)) {
-                filteredList.add(getAccessMonitoredFileObject(location, file) as JavaFileObject)
+                filteredList.add(wrapWithAccessMonitoringIfNeeded(location, file) as JavaFileObject)
             }
 
         return filteredList
@@ -55,7 +55,7 @@ class KaptJavaFileManager(context: Context, private val shouldRecordFileAccess: 
 
     override fun getJavaFileForInput(location: JavaFileManager.Location?, className: String?, kind: JavaFileObject.Kind?): JavaFileObject? {
         val file = super.getJavaFileForInput(location, className, kind)
-        return getAccessMonitoredFileObject(location, file) as JavaFileObject?
+        return wrapWithAccessMonitoringIfNeeded(location, file) as JavaFileObject?
     }
 
     override fun getJavaFileForOutput(
@@ -65,12 +65,12 @@ class KaptJavaFileManager(context: Context, private val shouldRecordFileAccess: 
         sibling: FileObject?
     ): JavaFileObject? {
         val file = super.getJavaFileForOutput(location, className, kind, sibling)
-        return getAccessMonitoredFileObject(location, file) as JavaFileObject?
+        return wrapWithAccessMonitoringIfNeeded(location, file) as JavaFileObject?
     }
 
     override fun getFileForInput(location: JavaFileManager.Location?, packageName: String?, relativeName: String?): FileObject? {
         val file = super.getFileForInput(location, packageName, relativeName)
-        return getAccessMonitoredFileObject(location, file)
+        return wrapWithAccessMonitoringIfNeeded(location, file)
     }
 
     override fun getFileForOutput(
@@ -80,7 +80,7 @@ class KaptJavaFileManager(context: Context, private val shouldRecordFileAccess: 
         sibling: FileObject?
     ): FileObject? {
         val file = super.getFileForOutput(location, packageName, relativeName, sibling)
-        return getAccessMonitoredFileObject(location, file)
+        return wrapWithAccessMonitoringIfNeeded(location, file)
     }
 
     /** javac does not play nice with wrapped file objects in this method; so we unwrap */
@@ -92,7 +92,7 @@ class KaptJavaFileManager(context: Context, private val shouldRecordFileAccess: 
         return super.isSameFile(unwrapObject(a), unwrapObject(b))
     }
 
-    private fun getAccessMonitoredFileObject(location: JavaFileManager.Location?, file: FileObject?) =
+    private fun wrapWithAccessMonitoringIfNeeded(location: JavaFileManager.Location?, file: FileObject?) =
         if (shouldRecordFileAccess && location != StandardLocation.ANNOTATION_PROCESSOR_PATH && file != null && file is JavaFileObject)
             AccessMonitoredJavaFileObject(file)
         else file
