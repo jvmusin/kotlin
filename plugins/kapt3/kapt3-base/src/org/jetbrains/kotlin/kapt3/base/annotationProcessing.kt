@@ -127,7 +127,7 @@ fun KaptContext.doAnnotationProcessing(
         options.processorsStatsReportFile?.let { dumpProcessorStats(wrappedProcessors, it, logger::info) }
 
         options.fileAccessHistoryReportFile?.let {
-            dumpFileAccessHistory(fileManager, options.fileAccessHistoryReportFile, logger::info)
+            dumpFileAccessHistory(fileManager, it, logger::info)
         }
 
         if (logger.isVerbose) {
