@@ -85,11 +85,11 @@ class KaptJavaFileManager(context: Context, private val shouldRecordFileAccess: 
 
     /** javac does not play nice with wrapped file objects in this method; so we unwrap */
     override fun inferBinaryName(location: JavaFileManager.Location?, file: JavaFileObject): String? =
-        super.inferBinaryName(location, getOriginalFileObject(file) as JavaFileObject)
+        super.inferBinaryName(location, unwrapObject(file) as JavaFileObject)
 
     /** javac does not play nice with wrapped file objects in this method; so we unwrap */
     override fun isSameFile(a: FileObject, b: FileObject): Boolean {
-        return super.isSameFile(getOriginalFileObject(a), getOriginalFileObject(b))
+        return super.isSameFile(unwrapObject(a), unwrapObject(b))
     }
 
     private fun getAccessMonitoredFileObject(location: JavaFileManager.Location?, file: FileObject?) =
@@ -97,7 +97,7 @@ class KaptJavaFileManager(context: Context, private val shouldRecordFileAccess: 
             AccessMonitoredJavaFileObject(file)
         else file
 
-    private fun getOriginalFileObject(file: FileObject): FileObject =
+    private fun unwrapObject(file: FileObject): FileObject =
         if (file is AccessMonitoredJavaFileObject) file.getJavaFileObject() else file
 
     fun renderFileAccessHistory() = fileAccessHistory.sorted().joinToString("\n")
