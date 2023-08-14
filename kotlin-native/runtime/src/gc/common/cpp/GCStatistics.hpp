@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 
+#include "Clock.hpp"
 #include "Common.h"
 #include "Logging.hpp"
 #include "Porting.h"
@@ -38,8 +39,8 @@ class GCHandle {
 public:
     class GCStageScopeUsTimer {
     protected:
-        uint64_t startTime_ = konan::getTimeMicros();
-        uint64_t getStageTime() const { return (konan::getTimeMicros() - startTime_); }
+        steady_clock::time_point startTime_ = steady_clock::now();
+        steady_clock::duration getStageTime() const noexcept { return steady_clock::now() - startTime_; }
     };
 
     class GCSweepScope : GCStageScopeUsTimer, Pinned {

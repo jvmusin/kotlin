@@ -45,11 +45,6 @@ int currentThreadId();
 // by C compiler.
 void* memmem(const void *big, size_t bigLen, const void *little, size_t littleLen);
 
-// Time operations.
-uint64_t getTimeMillis();
-uint64_t getTimeMicros();
-uint64_t getTimeNanos();
-
 }  // namespace konan
 
 #endif  // RUNTIME_PORTING_H

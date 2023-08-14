@@ -25,6 +25,7 @@
 #include <pthread.h>
 #include "PthreadUtils.h"
 
+#include "Clock.hpp"
 #include "Exceptions.h"
 #include "KAssert.h"
 #include "Memory.h"
@@ -98,6 +99,8 @@ enum class WorkerKind {
 };
 
 struct Job {
+  Job() noexcept : kind(JOB_NONE) {}
+
   enum JobKind kind;
   union {
     struct {
@@ -114,7 +117,7 @@ struct Job {
 
     struct {
       KNativePtr operation;
-      uint64_t whenExecute;
+      steady_clock::time_point whenExecute;
     } executeAfter;
   };
 };
@@ -448,7 +451,7 @@ class State {
     if (afterMicroseconds == 0) {
       worker->putJob(job, false);
     } else {
-      job.executeAfter.whenExecute = konan::getTimeMicros() + afterMicroseconds;
+      job.executeAfter.whenExecute = steady_clock::now() + microseconds(afterMicroseconds);
       worker->putDelayedJob(job);
     }
     return true;
@@ -932,7 +935,7 @@ bool Worker::waitDelayed(bool blocking) {
 Job Worker::getJob(bool blocking) {
   Locker locker(&lock_);
   RuntimeAssert(!terminated_, "Must not be terminated");
-  if (queue_.size() == 0 && !blocking) return Job { .kind = JOB_NONE };
+  if (queue_.size() == 0 && !blocking) return Job();
   waitForQueueLocked(-1, nullptr);
   auto result = queue_.front();
   queue_.pop_front();
@@ -946,7 +949,7 @@ KLong Worker::checkDelayedLocked() {
   auto it = delayed_.begin();
   auto job = *it;
   RuntimeAssert(job.kind == JOB_EXECUTE_AFTER, "Must be delayed job");
-  auto now = konan::getTimeMicros();
+  auto now = steady_clock::now();
   if (job.executeAfter.whenExecute <= now) {
     // Note: `delayed_` is multiset sorted only by `whenExecute`.
     // So using erase(it) instead of erase(job) is crucial,
@@ -955,7 +958,7 @@ KLong Worker::checkDelayedLocked() {
     queue_.push_back(job);
     return 0;
   } else {
-    return job.executeAfter.whenExecute - now;
+    return std::chrono::duration_cast<microseconds>(job.executeAfter.whenExecute - now).count().value;
   }
 }
 

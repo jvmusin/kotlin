@@ -9,6 +9,7 @@
 #include <limits>
 #include <optional>
 
+#include "Clock.hpp"
 #include "Logging.hpp"
 #include "Mutex.hpp"
 #include "Porting.h"
@@ -66,6 +67,14 @@ struct SweepStatsMap {
     }
 };
 
+constexpr int64_t asMicroseconds(steady_clock::duration value) noexcept {
+    return std::chrono::duration_cast<microseconds>(value).count().value;
+}
+
+constexpr KLong asNanoseconds(steady_clock::time_point at) noexcept {
+    return std::chrono::duration_cast<nanoseconds>(at.time_since_epoch()).count().value;
+}
+
 struct RootSetStatistics {
     KLong threadLocalReferences;
     KLong stackReferences;
@@ -76,11 +85,11 @@ struct RootSetStatistics {
 
 struct GCInfo {
     std::optional<uint64_t> epoch;
-    std::optional<KLong> startTime; // time since process start
-    std::optional<KLong> endTime;
-    std::optional<KLong> pauseStartTime;
-    std::optional<KLong> pauseEndTime;
-    std::optional<KLong> finalizersDoneTime;
+    std::optional<steady_clock::time_point> startTime; // time since process start
+    std::optional<steady_clock::time_point> endTime;
+    std::optional<steady_clock::time_point> pauseStartTime;
+    std::optional<steady_clock::time_point> pauseEndTime;
+    std::optional<steady_clock::time_point> finalizersDoneTime;
     std::optional<RootSetStatistics> rootSet;
     std::optional<kotlin::gc::MarkStats> markStats;
     SweepStatsMap sweepStats;
@@ -90,11 +99,11 @@ struct GCInfo {
     void build(KRef builder) {
         if (!epoch) return;
         Kotlin_Internal_GC_GCInfoBuilder_setEpoch(builder, static_cast<KLong>(*epoch));
-        if (startTime) Kotlin_Internal_GC_GCInfoBuilder_setStartTime(builder, *startTime);
-        if (endTime) Kotlin_Internal_GC_GCInfoBuilder_setEndTime(builder, *endTime);
-        if (pauseStartTime) Kotlin_Internal_GC_GCInfoBuilder_setPauseStartTime(builder, *pauseStartTime);
-        if (pauseEndTime) Kotlin_Internal_GC_GCInfoBuilder_setPauseEndTime(builder, *pauseEndTime);
-        if (finalizersDoneTime) Kotlin_Internal_GC_GCInfoBuilder_setPostGcCleanupTime(builder, *finalizersDoneTime);
+        if (startTime) Kotlin_Internal_GC_GCInfoBuilder_setStartTime(builder, asNanoseconds(*startTime));
+        if (endTime) Kotlin_Internal_GC_GCInfoBuilder_setEndTime(builder, asNanoseconds(*endTime));
+        if (pauseStartTime) Kotlin_Internal_GC_GCInfoBuilder_setPauseStartTime(builder, asNanoseconds(*pauseStartTime));
+        if (pauseEndTime) Kotlin_Internal_GC_GCInfoBuilder_setPauseEndTime(builder, asNanoseconds(*pauseEndTime));
+        if (finalizersDoneTime) Kotlin_Internal_GC_GCInfoBuilder_setPostGcCleanupTime(builder, asNanoseconds(*finalizersDoneTime));
         if (rootSet)
             Kotlin_Internal_GC_GCInfoBuilder_setRootSet(
                     builder, rootSet->threadLocalReferences, rootSet->stackReferences, rootSet->globalReferences,
@@ -152,10 +161,9 @@ GCHandle GCHandle::create(uint64_t epoch) {
         GCLogWarning(epoch, "Starting new GC epoch, while previous is not finished");
     }
     current.epoch = static_cast<KLong>(epoch);
-    current.startTime = static_cast<KLong>(konan::getTimeNanos());
+    current.startTime = steady_clock::now();
     if (last.endTime) {
-        auto time = (*current.startTime - *last.endTime) / 1000;
-        GCLogInfo(epoch, "Started. Time since last GC %" PRIu64 " microseconds.", time);
+        GCLogInfo(epoch, "Started. Time since last GC %" PRIu64 " microseconds.", asMicroseconds(*current.startTime - *last.endTime));
     } else {
         GCLogInfo(epoch, "Started.");
     }
@@ -192,7 +200,7 @@ bool GCHandle::isValid() const {
 void GCHandle::finished() {
     std::lock_guard guard(lock);
     if (auto* stat = statByEpoch(epoch_)) {
-        stat->endTime = static_cast<KLong>(konan::getTimeNanos());
+        stat->endTime = steady_clock::now();
         stat->memoryUsageAfter.heap = currentHeapUsage();
         if (stat->rootSet) {
             GCLogInfo(
@@ -225,12 +233,10 @@ void GCHandle::finished() {
                     stat->memoryUsageAfter.heap->sizeBytes);
         }
         if (stat->pauseStartTime && stat->pauseEndTime) {
-            auto time = (*stat->pauseEndTime - *stat->pauseStartTime) / 1000;
-            GCLogInfo(epoch_, "Mutators pause time: %" PRIu64 " microseconds.", time);
+            GCLogInfo(epoch_, "Mutators pause time: %" PRIu64 " microseconds.", asMicroseconds(*stat->pauseEndTime - *stat->pauseStartTime));
         }
         if (stat->startTime) {
-            auto time = (*current.endTime - *current.startTime) / 1000;
-            GCLogInfo(epoch_, "Finished. Total GC epoch time is %" PRId64" microseconds.", time);
+            GCLogInfo(epoch_, "Finished. Total GC epoch time is %" PRId64" microseconds.", asMicroseconds(*stat->endTime - *stat->startTime));
         }
 
         if (stat == &current) {
@@ -243,15 +249,14 @@ void GCHandle::suspensionRequested() {
     std::lock_guard guard(lock);
     GCLogDebug(epoch_, "Requested thread suspension");
     if (auto* stat = statByEpoch(epoch_)) {
-        stat->pauseStartTime = static_cast<KLong>(konan::getTimeNanos());
+        stat->pauseStartTime = steady_clock::now();
     }
 }
 void GCHandle::threadsAreSuspended() {
     std::lock_guard guard(lock);
     if (auto* stat = statByEpoch(epoch_)) {
         if (stat->pauseStartTime) {
-            auto time = (konan::getTimeNanos() - *stat->pauseStartTime) / 1000;
-            GCLogDebug(epoch_, "Suspended all threads in %" PRIu64 " microseconds", time);
+            GCLogDebug(epoch_, "Suspended all threads in %" PRIu64 " microseconds", asMicroseconds(steady_clock::now() - *stat->pauseStartTime));
             return;
         }
     }
@@ -268,10 +273,9 @@ void GCHandle::threadsAreSuspended() {
 void GCHandle::threadsAreResumed() {
     std::lock_guard guard(lock);
     if (auto* stat = statByEpoch(epoch_)) {
-        stat->pauseEndTime = static_cast<KLong>(konan::getTimeNanos());
+        stat->pauseEndTime = steady_clock::now();
         if (stat->pauseStartTime) {
-            auto time = (*stat->pauseEndTime - *stat->pauseStartTime) / 1000;
-            GCLogDebug(epoch_, "Resume all threads. Total pause time is %" PRId64 " microseconds.", time);
+            GCLogDebug(epoch_, "Resume all threads. Total pause time is %" PRId64 " microseconds.", asMicroseconds(*stat->pauseEndTime - *stat->pauseStartTime));
             return;
         }
     }
@@ -279,10 +283,9 @@ void GCHandle::threadsAreResumed() {
 void GCHandle::finalizersDone() {
     std::lock_guard guard(lock);
     if (auto* stat = statByEpoch(epoch_)) {
-        stat->finalizersDoneTime = static_cast<KLong>(konan::getTimeNanos());
+        stat->finalizersDoneTime = steady_clock::now();
         if (stat->endTime) {
-            auto time = (*stat->finalizersDoneTime - *stat->endTime) / 1000;
-            GCLogInfo(epoch_, "Finalization is done in %" PRId64 " microseconds after epoch end.", time);
+            GCLogInfo(epoch_, "Finalization is done in %" PRId64 " microseconds after epoch end.", asMicroseconds(*stat->finalizersDoneTime - *stat->endTime));
             return;
         } else {
             GCLogInfo(epoch_, "Finalization is done.");
@@ -367,7 +370,7 @@ GCHandle::GCSweepScope::~GCSweepScope() {
             handle_.getEpoch(),
             "Collected %" PRId64 " heap objects in %" PRIu64 " microseconds. "
             "%" PRId64 " heap objects are kept alive.",
-            stats_.sweptCount, getStageTime(), stats_.keptCount);
+            stats_.sweptCount, asMicroseconds(getStageTime()), stats_.keptCount);
 }
 
 GCHandle::GCSweepExtraObjectsScope::GCSweepExtraObjectsScope(kotlin::gc::GCHandle& handle) : handle_(handle) {}
@@ -378,7 +381,7 @@ GCHandle::GCSweepExtraObjectsScope::~GCSweepExtraObjectsScope() {
             handle_.getEpoch(),
             "Collected %" PRId64 " extra objects in %" PRIu64 " microseconds. "
             "%" PRId64 " extra objects are kept alive.",
-            stats_.sweptCount, getStageTime(), stats_.keptCount);
+            stats_.sweptCount, asMicroseconds(getStageTime()), stats_.keptCount);
 }
 
 GCHandle::GCGlobalRootSetScope::GCGlobalRootSetScope(kotlin::gc::GCHandle& handle) : handle_(handle) {}
@@ -386,7 +389,7 @@ GCHandle::GCGlobalRootSetScope::GCGlobalRootSetScope(kotlin::gc::GCHandle& handl
 GCHandle::GCGlobalRootSetScope::~GCGlobalRootSetScope(){
     handle_.globalRootSetCollected(globalRoots_, stableRoots_);
     GCLogDebug(handle_.getEpoch(), "Collected global root set global=%" PRIu64 " stableRef=%" PRIu64 " in %" PRIu64" microseconds.",
-               globalRoots_, stableRoots_, getStageTime());
+               globalRoots_, stableRoots_, asMicroseconds(getStageTime()));
 }
 
 GCHandle::GCThreadRootSetScope::GCThreadRootSetScope(kotlin::gc::GCHandle& handle, mm::ThreadData& threadData) :
@@ -395,14 +398,14 @@ GCHandle::GCThreadRootSetScope::GCThreadRootSetScope(kotlin::gc::GCHandle& handl
 GCHandle::GCThreadRootSetScope::~GCThreadRootSetScope(){
     handle_.threadRootSetCollected(threadData_, threadLocalRoots_, stackRoots_);
     GCLogDebug(handle_.getEpoch(), "Collected root set for thread #%d: stack=%" PRIu64 " tls=%" PRIu64 " in %" PRIu64" microseconds.",
-               threadData_.threadId(), stackRoots_, threadLocalRoots_, getStageTime());
+               threadData_.threadId(), stackRoots_, threadLocalRoots_, asMicroseconds(getStageTime()));
 }
 
 GCHandle::GCMarkScope::GCMarkScope(kotlin::gc::GCHandle& handle) : handle_(handle){}
 
 GCHandle::GCMarkScope::~GCMarkScope() {
     handle_.marked(stats_);
-    GCLogDebug(handle_.getEpoch(), "Marked %" PRIu64 " objects in %" PRIu64 " microseconds.", stats_.markedCount, getStageTime());
+    GCLogDebug(handle_.getEpoch(), "Marked %" PRIu64 " objects in %" PRIu64 " microseconds.", stats_.markedCount, asMicroseconds(getStageTime()));
 }
 
 gc::GCHandle::GCProcessWeaksScope::GCProcessWeaksScope(gc::GCHandle& handle) noexcept : handle_(handle) {}
@@ -412,7 +415,7 @@ gc::GCHandle::GCProcessWeaksScope::~GCProcessWeaksScope() {
             handle_.getEpoch(),
             "Processed special refs in %" PRIu64 " microseconds. %" PRIu64 " are undisposed, %" PRIu64 " are alive, %" PRIu64
             " are nulled out",
-            getStageTime(), undisposedCount_, aliveCount_, nulledCount_);
+            asMicroseconds(getStageTime()), undisposedCount_, aliveCount_, nulledCount_);
 }
 
 } // namespace kotlin::gc

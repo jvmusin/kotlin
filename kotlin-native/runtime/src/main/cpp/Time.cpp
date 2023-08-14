@@ -14,22 +14,31 @@
  * limitations under the License.
  */
 
-#include "Natives.h"
-#include "Porting.h"
+#include "Clock.hpp"
 #include "Types.h"
+
+using namespace kotlin;
+
+namespace {
+
+auto now() noexcept {
+  return steady_clock::now().time_since_epoch();
+}
+
+}
 
 extern "C" {
 
 KLong Kotlin_system_getTimeMillis() {
-  return konan::getTimeMillis();
+  return std::chrono::duration_cast<milliseconds>(now()).count().value;
 }
 
 KLong Kotlin_system_getTimeNanos() {
-  return konan::getTimeNanos();
+  return std::chrono::duration_cast<nanoseconds>(now()).count().value;
 }
 
 KLong Kotlin_system_getTimeMicros() {
-  return konan::getTimeMicros();
+  return std::chrono::duration_cast<microseconds>(now()).count().value;
 }
 
 }  // extern "C"

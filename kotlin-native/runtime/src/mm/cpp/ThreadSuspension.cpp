@@ -11,6 +11,7 @@
 #include <mutex>
 
 #include "CallsChecker.hpp"
+#include "Clock.hpp"
 #include "Logging.hpp"
 #include "Porting.h"
 #include "SafePoint.hpp"
@@ -51,16 +52,16 @@ kotlin::ThreadState kotlin::mm::ThreadSuspensionData::setState(kotlin::ThreadSta
 
 NO_EXTERNAL_CALLS_CHECK void kotlin::mm::ThreadSuspensionData::suspendIfRequested() noexcept {
     if (IsThreadSuspensionRequested()) {
-        auto suspendStartMs = konan::getTimeMicros();
+        auto suspendStart = steady_clock::now();
         threadData_.gc().OnSuspendForGC();
         std::unique_lock lock(gSuspensionMutex);
         auto threadId = konan::currentThreadId();
         RuntimeLogDebug({kTagGC, kTagMM}, "Suspending thread %d", threadId);
         AutoReset scopedAssignSuspended(&suspended_, true);
         gSuspensionCondVar.wait(lock, []() { return !IsThreadSuspensionRequested(); });
-        auto suspendEndMs = konan::getTimeMicros();
-        RuntimeLogDebug({kTagGC, kTagMM}, "Resuming thread %d after %" PRIu64 " microseconds of suspension",
-                        threadId, suspendEndMs - suspendStartMs);
+        int64_t suspendDurationMs = std::chrono::duration_cast<microseconds>(steady_clock::now() - suspendStart).count().value;
+        RuntimeLogDebug({kTagGC, kTagMM}, "Resuming thread %d after %" PRId64 " microseconds of suspension",
+                        threadId, suspendDurationMs);
     }
 }
 
