@@ -106,7 +106,7 @@ public actual interface KProperty0<out V> : KProperty<V>, () -> V {
  * Represents a `var`-property without any kind of receiver.
  */
 @OptIn(ExperimentalMultiplatform::class)
-@AllowDifferentMembersInActual // Covariant 'setter' override. The annotations can be dropped in K2 TODO(YT-ticket)
+@AllowDifferentMembersInActual // Covariant 'setter' override. The annotations can be dropped in K2 KT-61184
 public actual interface KMutableProperty0<V> : KProperty0<V>, KMutableProperty<V> {
     /**
      * Modifies the value of the property.
@@ -175,7 +175,7 @@ public actual interface KProperty1<T, out V> : KProperty<V>, (T) -> V {
  * Represents a `var`-property, operations on which take one receiver as a parameter.
  */
 @OptIn(ExperimentalMultiplatform::class)
-@AllowDifferentMembersInActual // Covariant 'setter' override. The annotations can be dropped in K2 TODO(YT-ticket)
+@AllowDifferentMembersInActual // Covariant 'setter' override. The annotations can be dropped in K2 KT-61184
 public actual interface KMutableProperty1<T, V> : KProperty1<T, V>, KMutableProperty<V> {
     /**
      * Modifies the value of the property.
@@ -251,7 +251,7 @@ public actual interface KProperty2<D, E, out V> : KProperty<V>, (D, E) -> V {
  * Represents a `var`-property, operations on which take two receivers as parameters.
  */
 @OptIn(ExperimentalMultiplatform::class)
-@AllowDifferentMembersInActual // Covariant 'setter' override. The annotations can be dropped in K2 TODO(YT-ticket)
+@AllowDifferentMembersInActual // Covariant 'setter' override. The annotations can be dropped in K2 KT-61184
 public actual interface KMutableProperty2<D, E, V> : KProperty2<D, E, V>, KMutableProperty<V> {
     /**
      * Modifies the value of the property.
