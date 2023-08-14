@@ -489,33 +489,6 @@ tasks.named("clean") {
     }
 }
 
-val generateJsMath by tasks.registering {
-    dependsOn(":distCompiler")
-    doLast {
-        val distDir: File by project
-        val jsinteropScript = if (PlatformInfo.isWindows()) "jsinterop.bat" else "jsinterop"
-        val jsinterop = "$distDir/bin/$jsinteropScript"
-        val targetDir = "$buildDir/generated"
-
-        project.exec {
-            commandLine(
-                    jsinterop,
-                    "-pkg", "kotlinx.interop.wasm.math",
-                    "-o", "$targetDir/math",
-                    "-target", "wasm32"
-            )
-        }
-
-        val generated = file("$targetDir/math-build/natives/js_stubs.js")
-        val mathJs = file("src/main/js/math.js")
-        mathJs.writeText(
-            "// NOTE: THIS FILE IS AUTO-GENERATED!\n" +
-            "// Run ':runtime:generateJsMath' to re-generate it.\n\n"
-        )
-        mathJs.appendText(generated.readText())
-    }
-}
-
 // region: Stdlib
 
 val commonStdlibSrcDirs = project(":kotlin-stdlib-common")
@@ -529,7 +502,6 @@ val commonStdlibSrcDirs = project(":kotlin-stdlib-common")
 val interopRuntimeCommonSrcDir = project(":kotlin-native:Interop:Runtime").file("src/main/kotlin")
 val interopSrcDirs = listOf(
         project(":kotlin-native:Interop:Runtime").file("src/native/kotlin"),
-        project(":kotlin-native:Interop:JsRuntime").file("src/main/kotlin")
 )
 
 val testAnnotationCommonSrcDir = project(":kotlin-test:kotlin-test-annotations-common").files("src/main/kotlin").files
