@@ -146,7 +146,6 @@ private fun KotlinTarget.addStdlibDependency(
                 // except standalone compilations which as not using 'common'
                 if (isMppProject &&
                     stdlibVersion >= kotlin1920Version &&
-                    compilation.platformType != KotlinPlatformType.wasm &&
                     kotlinSourceSet.dependsOn.isNotEmpty()
                 ) return@withDependencies
 
@@ -198,7 +197,7 @@ internal fun KotlinPlatformType.stdlibPlatformType(
     }
 
     KotlinPlatformType.js -> if (isVersionWithGradleMetadata) KOTLIN_STDLIB_MODULE_NAME else KOTLIN_STDLIB_JS_MODULE_NAME
-    KotlinPlatformType.wasm -> null
+    KotlinPlatformType.wasm -> KOTLIN_STDLIB_MODULE_NAME
     KotlinPlatformType.native -> null
     KotlinPlatformType.common -> // there's no platform compilation that the source set is default for
         if (isVersionWithGradleMetadata) KOTLIN_STDLIB_MODULE_NAME else KOTLIN_STDLIB_COMMON_MODULE_NAME
