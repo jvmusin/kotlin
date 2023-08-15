@@ -10,6 +10,7 @@ package runtime.basic.cleaner_basic
 import kotlin.test.*
 
 import kotlin.native.internal.*
+import kotlin.concurrent.AtomicInt
 import kotlin.native.concurrent.*
 import kotlin.native.ref.WeakReference
 import kotlin.native.ref.Cleaner
