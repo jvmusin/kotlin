@@ -126,8 +126,8 @@ fun KaptContext.doAnnotationProcessing(
 
         options.processorsStatsReportFile?.let { dumpProcessorStats(wrappedProcessors, it, logger::info) }
 
-        options.fileAccessHistoryReportFile?.let {
-            dumpFileAccessHistory(fileManager, it, logger::info)
+        options.fileReadHistoryReportFile?.let {
+            dumpFileReadHistory(fileManager, it, logger::info)
         }
 
         if (logger.isVerbose) {
@@ -169,10 +169,10 @@ private fun dumpProcessorStats(wrappedProcessors: List<ProcessorWrapper>, apRepo
     })
 }
 
-private fun dumpFileAccessHistory(fileManager: KaptJavaFileManager, reportFile: File, logger: (String) -> Unit) {
-    logger("Dumping KAPT file access history to ${reportFile.absolutePath}")
+private fun dumpFileReadHistory(fileManager: KaptJavaFileManager, reportFile: File, logger: (String) -> Unit) {
+    logger("Dumping KAPT file read history to ${reportFile.absolutePath}")
 
-    reportFile.writeText(fileManager.renderFileAccessHistory())
+    reportFile.writeText(fileManager.renderFileReadHistory())
 }
 
 private fun reportIfRunningNonIncrementally(

@@ -47,7 +47,7 @@ open class KaptContext(val options: KaptOptions, val withJdk: Boolean, val logge
 
     init {
         preregisterLog(context)
-        KaptJavaFileManager.preRegister(context, options.fileAccessHistoryReportFile != null)
+        KaptJavaFileManager.preRegister(context, options.fileReadHistoryReportFile != null)
 
         @Suppress("LeakingThis")
         preregisterTreeMaker(context)

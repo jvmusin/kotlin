@@ -367,7 +367,7 @@ private class KaptExecution @Inject constructor(
             processingClassLoader,
             disableClassloaderCacheForProcessors,
             /*processorsPerfReportFile=*/null,
-            /*fileAccessHistoryReportFile*/null,
+            /*fileReadHistoryReportFile*/null,
         )
     }
 
