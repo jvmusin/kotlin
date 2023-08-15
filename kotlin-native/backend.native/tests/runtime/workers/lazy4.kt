@@ -7,6 +7,7 @@
 package runtime.workers.lazy4
 
 import kotlin.test.*
+import kotlin.concurrent.AtomicInt
 import kotlin.concurrent.*
 import kotlin.native.concurrent.*
 

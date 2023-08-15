@@ -7,6 +7,7 @@
 package runtime.workers.worker11
 
 import kotlin.test.*
+import kotlin.concurrent.AtomicInt
 import kotlin.concurrent.*
 import kotlin.native.concurrent.*
 import kotlinx.cinterop.convert

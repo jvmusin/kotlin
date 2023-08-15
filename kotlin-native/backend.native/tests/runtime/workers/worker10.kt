@@ -3,6 +3,8 @@
 package runtime.workers.worker10
 
 import kotlin.test.*
+import kotlin.concurrent.AtomicReference
+import kotlin.concurrent.AtomicInt
 import kotlin.concurrent.*
 import kotlin.native.concurrent.*
 import kotlin.native.ref.WeakReference
