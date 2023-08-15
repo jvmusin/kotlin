@@ -2,7 +2,7 @@
 
 import kotlinx.cinterop.*
 import kt44283.*
-import kotlin.native.concurrent.AtomicInt
+import kotlin.concurrent.AtomicInt
 import kotlin.test.*
 
 val callbackCounter = AtomicInt(0)

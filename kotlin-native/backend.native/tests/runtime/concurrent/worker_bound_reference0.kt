@@ -8,6 +8,7 @@ package runtime.concurrent.worker_bound_reference0
 
 import kotlin.test.*
 
+import kotlin.concurrent.*
 import kotlin.native.concurrent.*
 import kotlin.native.*
 import kotlin.native.ref.WeakReference

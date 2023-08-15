@@ -5,7 +5,7 @@
 @file:OptIn(kotlin.experimental.ExperimentalNativeApi::class, FreezingIsDeprecated::class)
 
 import kotlin.test.*
-
+import kotlin.concurrent.*
 import kotlin.native.concurrent.*
 
 fun main() {
