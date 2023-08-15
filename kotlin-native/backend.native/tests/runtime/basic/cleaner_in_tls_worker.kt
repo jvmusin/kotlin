@@ -6,7 +6,7 @@
 
 import kotlin.test.*
 
-import kotlin.concurrent.*
+import kotlin.concurrent.AtomicInt
 import kotlin.native.concurrent.*
 import kotlin.native.internal.*
 import kotlin.native.ref.Cleaner

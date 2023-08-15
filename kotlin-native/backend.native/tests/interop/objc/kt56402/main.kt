@@ -6,7 +6,7 @@
 
 import objclib.*
 
-import kotlin.concurrent.*
+import kotlin.concurrent.AtomicInt
 import kotlin.native.concurrent.*
 import kotlin.native.internal.test.testLauncherEntryPoint
 import kotlin.system.exitProcess
