@@ -8,8 +8,11 @@ package org.jetbrains.kotlin.gradle.utils
 
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.ArtifactRepository
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.FileTree
 import org.gradle.api.logging.Logger
+import org.gradle.api.provider.ValueSource
+import org.gradle.api.provider.ValueSourceParameters
 import org.jetbrains.kotlin.compilerRunner.KotlinNativeToolRunner
 import org.jetbrains.kotlin.compilerRunner.konanHome
 import org.jetbrains.kotlin.compilerRunner.konanVersion
@@ -27,13 +30,15 @@ import java.nio.file.Files
 
 class NativeCompilerDownloader(
     val project: Project,
-    private val compilerVersion: String = project.konanVersion
+    private val compilerVersion: String = project.konanVersion,
 ) {
 
     companion object {
         val DEFAULT_KONAN_VERSION: String by lazy {
             loadPropertyFromResources("project.properties", "kotlin.native.version")
         }
+
+        var NEED_TO_DOWNLOAD_FLAG: Boolean = true
 
         internal const val BASE_DOWNLOAD_URL = "https://download.jetbrains.com/kotlin/native/builds"
         internal const val KOTLIN_GROUP_ID = "org.jetbrains.kotlin"
@@ -116,7 +121,7 @@ class NativeCompilerDownloader(
         }
     }
 
-    private fun downloadAndExtract() {
+    fun downloadAndExtract() {
         val repo = if (!kotlinProperties.nativeDownloadFromMaven) {
             setupRepo(repoUrl)
         } else null
@@ -185,10 +190,27 @@ class NativeCompilerDownloader(
     }
 
     fun downloadIfNeeded() {
-
-        val classpath = KotlinNativeToolRunner.Settings.fromProject(project).classpath
-        if (classpath.isEmpty() || classpath.any { !it.exists() }) {
+        checkClassPath()
+        if (NEED_TO_DOWNLOAD_FLAG) {
             downloadAndExtract()
+        }
+    }
+
+    private fun checkClassPath() {
+        project.providers.of(NativeCompilerDownloaderClassPathChecker::class.java) {
+            it.parameters.classPath.setFrom(KotlinNativeToolRunner.Settings.fromProject(project).classpath)
+        }.forUseAtConfigurationTime().get()
+    }
+
+    abstract class NativeCompilerDownloaderClassPathChecker : ValueSource<Boolean, NativeCompilerDownloaderClassPathChecker.Params> {
+
+        interface Params : ValueSourceParameters {
+            val classPath: ConfigurableFileCollection
+        }
+
+        override fun obtain(): Boolean {
+            NEED_TO_DOWNLOAD_FLAG = parameters.classPath.files.none { it.exists() }
+            return true
         }
     }
 }
@@ -204,6 +226,7 @@ internal fun Project.setupNativeCompiler(konanTarget: KonanTarget) {
         }
 
         downloader.downloadIfNeeded()
+
         logger.info("Kotlin/Native distribution: $konanHome")
     } else {
         logger.info("User-provided Kotlin/Native distribution: $konanHome")
@@ -214,3 +237,4 @@ internal fun Project.setupNativeCompiler(konanTarget: KonanTarget) {
         PlatformLibrariesGenerator(project, konanTarget).generatePlatformLibsIfNeeded()
     }
 }
+
