@@ -55,7 +55,7 @@ data class ExpectActualMemberDiff<out M, out C>(val kind: Kind, val actualMember
 /**
  * This function serves a purpose of type-safe documentation. A mapping can be established between [ExpectActualCompatibility.Incompatible]
  * and [ExpectActualMemberDiff.Kind]. This exhaustive when fixates this mapping, ensuring that we won't forget to add new
- * [ExpectActualMemberDiff.Kind] when [ExpectActualCompatibility.Incompatible] is updated and vice versa.
+ * [ExpectActualMemberDiff.Kind] when [ExpectActualCompatibility.Incompatible] is updated.
  */
 @Suppress("unused") // it's a type-safe documentation. That's why it's unused
 private fun ExpectActualCompatibility.Incompatible<*>.toDiffKind(): ExpectActualMemberDiff.Kind? = when (this) {
