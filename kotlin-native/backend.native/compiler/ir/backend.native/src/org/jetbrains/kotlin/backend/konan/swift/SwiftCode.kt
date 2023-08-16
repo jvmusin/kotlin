@@ -35,6 +35,11 @@ sealed interface SwiftCode {
 
         fun String.genericParameter(constraint: Type? = null) = GenericParameter(this, constraint)
 
+        fun String.declaration(
+                attributes: List<Attribute> = emptyList(),
+                visibility: Declaration.Visibility = Declaration.Visibility.INTERNAL
+        ) = Declaration.Verbatim(this, attributes, visibility)
+
         val Number.literal get() = Expression.NumericLiteral(this)
     }
 
@@ -83,6 +88,14 @@ sealed interface SwiftCode {
         val attributes: List<Attribute>
         val visibility: Visibility
 
+        data class Verbatim(
+                val body: String,
+                override val attributes: List<Attribute> = emptyList(),
+                override val visibility: Visibility = Visibility.INTERNAL
+        ) : Declaration {
+            override fun render(): String = (attributes.render() ?: "") + visibility.renderAsPrefix() + body
+        }
+
         data class TypeAlias(
                 val name: String,
                 val type: Type,
@@ -113,42 +126,35 @@ sealed interface SwiftCode {
             data class Parameter(
                     val argumentName: String?,
                     val parameterName: String? = null,
-                    val type: Type,
-                    val isInout: Boolean = false,
-                    val isVariadic: Boolean = false,
+                    val type: FunctionArgumentType,
                     val defaultValue: Expression? = null,
             ) : SwiftCode {
                 override fun render(): String {
                     return listOfNotNull(
                             (argumentName ?: "_") + (parameterName?.let { " $it" } ?: "") + ":",
-                            "inout".takeIf { isInout },
                             type.render(),
-                            "...".takeIf { isVariadic },
                             defaultValue?.let { "= " + it.render() }
                     ).joinToString(separator = " ")
                 }
             }
 
-            override fun render(): String {
-                val parameters = parameters.joinToString(separator = ", ") { it.render() }.let { "($it)" }
-                return listOfNotNull(
-                        attributes.render(),
-                        visibility.renderAsPrefix(),
-                        "mutating ".takeIf { isMutating },
-                        "static ".takeIf { isStatic },
-                        "final ".takeIf { isFinal },
-                        "override ".takeIf { isOverride },
-                        "func ",
-                        name.escapeIdentifierIfNeeded(),
-                        genericTypes.takeIf { it.isNotEmpty() }?.render(),
-                        parameters,
-                        " async".takeIf { isAsync },
-                        " throws".takeIf { isThrowing },
-                        returnType?.render()?.let { " -> $it" },
-                        genericTypeConstraints.takeIf { it.isNotEmpty() }?.render()?.let { " $it"},
-                        code?.renderAsBlock()?.let { " $it" }
-                ).joinToString(separator = "")
-            }
+            override fun render(): String = listOfNotNull(
+                    attributes.render(),
+                    visibility.renderAsPrefix(),
+                    "mutating ".takeIf { isMutating },
+                    "static ".takeIf { isStatic },
+                    "final ".takeIf { isFinal },
+                    "override ".takeIf { isOverride },
+                    "func ",
+                    name.escapeIdentifierIfNeeded(),
+                    genericTypes.render(),
+                    parameters.render(),
+                    " async".takeIf { isAsync },
+                    " throws".takeIf { isThrowing },
+                    returnType?.render()?.let { " -> $it" },
+                    genericTypeConstraints.takeIf { it.isNotEmpty() }?.render()?.let { " $it"},
+                    code?.renderAsBlock()?.let { " $it" }
+            ).joinToString(separator = "")
         }
 
         sealed interface Variable : Declaration {
@@ -160,6 +166,7 @@ sealed interface SwiftCode {
                 override val name: String,
                 override val type: Type? = null,
                 val value: Expression? = null,
+                val retention: ReferenceRetention,
                 override val attributes: List<Attribute> = emptyList(),
                 override val visibility: Visibility = Visibility.INTERNAL,
         ) : Variable {
@@ -167,6 +174,7 @@ sealed interface SwiftCode {
                 return listOfNotNull(
                         attributes.render(),
                         visibility.renderAsPrefix(),
+                        retention.render().takeIf { it.isNotEmpty() }?.let { "$it " },
                         "let ",
                         name,
                         type?.render()?.let { ": $it" },
@@ -179,6 +187,7 @@ sealed interface SwiftCode {
                 override val name: String,
                 override val type: Type? = null,
                 val value: Expression? = null,
+                val retention: ReferenceRetention = ReferenceRetention.Strong,
                 override val attributes: List<Attribute> = emptyList(),
                 override val visibility: Visibility = Visibility.INTERNAL,
                 val willSet: Observer? = null,
@@ -196,6 +205,7 @@ sealed interface SwiftCode {
                 return listOfNotNull(
                         attributes.render(),
                         visibility.renderAsPrefix(),
+                        retention.render().takeIf { it.isNotEmpty() }?.let { "$it " },
                         "var ",
                         name,
                         type?.render()?.let { ": $it" },
@@ -388,6 +398,10 @@ sealed interface SwiftCode {
             override fun render(): String = name
         }
 
+        data class Unwrap(val expression: Expression, val force: Boolean = false) : Expression {
+            override fun render(): String = expression.render().parenthesizeIfNeccessary() + (if (force) "!" else "?")
+        }
+
         data class Access(val receiver: Expression?, val name: String) : Expression {
             override fun render(): String {
                 val receiver = receiver?.render() ?: ""
@@ -442,9 +456,48 @@ sealed interface SwiftCode {
         object Nil : Expression {
             override fun render(): String = "nil"
         }
+
+        data class Closure(
+                val captures: List<Capture> = emptyList(),
+                val parameters: List<Parameter> = emptyList(),
+                val returnType: SwiftCode.Type? = null,
+                val isAsync: Boolean = false,
+                val isThrowing: Boolean = false,
+                val code: CodeBlock,
+        ) : Expression {
+            data class Capture(
+                    val name: String,
+                    val retention: ReferenceRetention = ReferenceRetention.Strong,
+                    val value: Expression? = null
+            ) : SwiftCode {
+                override fun render(): String = listOfNotNull(
+                        retention.render().takeIf { it.isNotEmpty() },
+                        name,
+                        value?.render()?.let { " = $it" }
+                ).joinToString(separator = "")
+            }
+
+            data class Parameter(val parameterName: String, val type: SwiftCode.FunctionArgumentType? = null) : SwiftCode {
+                override fun render(): String = parameterName + (type?.render()?.let { ": $it" } ?: "")
+            }
+
+            override fun render(): String {
+                val isTrivial = parameters.isEmpty() && captures.isEmpty() && returnType == null && !isAsync && !isThrowing
+                return listOfNotNull(
+                        "{",
+                        captures.render(),
+                        parameters.render().takeIf { it.isNotEmpty() || isTrivial } ?: "()",
+                        "async".takeIf { isAsync },
+                        "throws".takeIf { isThrowing },
+                        returnType?.render()?.let { "-> $it" },
+                        "in".takeIf { !isTrivial },
+                        code.render().let { if (it.lines().count() > 1) "\n${it.prependIndent(DEFAULT_INDENT)}\n}" else "$it }" }
+                ).joinToString(separator = " ")
+            }
+        }
     }
 
-    sealed interface Type : SwiftCode {
+    sealed interface Type : FunctionArgumentType {
         sealed interface PossiblyGeneric : Type
 
         data class Nominal(val name: String) : PossiblyGeneric {
@@ -507,6 +560,16 @@ sealed interface SwiftCode {
             override fun render(): String = protocols.takeIf { it.isNotEmpty() }
                     ?.joinToString(separator = " & ")
                     ?.let { "any $it" } ?: "Any"
+        }
+    }
+
+    sealed interface FunctionArgumentType : SwiftCode {
+        data class Inout(val type: Type) : FunctionArgumentType {
+            override fun render(): String = "inout " + type.render()
+        }
+
+        data class Variadic(val type: Type) : FunctionArgumentType {
+            override fun render(): String = type.render() + "..."
         }
     }
 
@@ -574,6 +637,20 @@ sealed interface SwiftCode {
     data class GenericConstraint(val type: Type, val constraint: Type, val isExact: Boolean = false) : SwiftCode {
         override fun render(): String = type.render() + (if (isExact) " == " else ": ") + constraint.render()
     }
+
+    sealed class ReferenceRetention : SwiftCode{
+        data object Strong : ReferenceRetention() {
+            override fun render(): String = ""
+        }
+
+        data object Weak : ReferenceRetention() {
+            override fun render(): String = "weak"
+        }
+
+        data class Unowned(val isSafe: Boolean? = null) : ReferenceRetention() {
+            override fun render(): String = "unowned" + (isSafe?.let { if (it) "(safe)" else "(unsafe)" } ?: "")
+        }
+    }
 }
 
 private fun String.escapeIdentifierIfNeeded(): String {
@@ -590,7 +667,7 @@ private fun String.parenthesizeIfNeccessary(): String {
             stack.isNotEmpty() && stack.peek() == it -> stack.pop()
             else -> map[it]?.let { stack.push(it) }
         }
-        stack.isEmpty()
+        !stack.isEmpty()
     }
 
     return if (needsEscaping) "($this)" else this
@@ -603,13 +680,23 @@ private fun List<SwiftCode.Attribute>.render(): String? {
 }
 
 @JvmName("renderAsGenericArgumentsList")
-private fun List<SwiftCode.Type>.render() = joinToString(prefix = "<", postfix = ">") { it.render() }
+private fun List<SwiftCode.Type>.render() = takeIf { it.isNotEmpty() }?.joinToString(prefix = "<", postfix = ">") { it.render() } ?: ""
 
 @JvmName("renderAsGenericParameterList")
-private fun List<SwiftCode.GenericParameter>.render() = joinToString(prefix = "<", postfix = ">") { it.render() }
+private fun List<SwiftCode.GenericParameter>.render() = takeIf { it.isNotEmpty() }?.joinToString(prefix = "<", postfix = ">") { it.render() } ?: ""
 
 @JvmName("renderAsGenericWhereClause")
 private fun List<SwiftCode.GenericConstraint>.render() = joinToString(prefix = "where ") { it.render() }
+
+@JvmName("renderAsCaptureList")
+private fun List<SwiftCode.Expression.Closure.Capture>.render() = takeIf { it.isNotEmpty() }?.joinToString(prefix = "[", postfix = "]") { it.render() } ?: ""
+
+@JvmName("renderAsClosureParameterList")
+private fun List<SwiftCode.Expression.Closure.Parameter>.render() = singleOrNull()?.takeIf { it.type == null }?.render()
+        ?: takeIf { it.isNotEmpty() }?.joinToString(prefix = "(", postfix = ")") { it.render() } ?: ""
+
+@JvmName("renderAsFunctionParameterList")
+private fun List<SwiftCode.Declaration.Function.Parameter>.render() = joinToString(prefix = "(", postfix = ")") { it.render() }
 
 //region imports
 
@@ -670,22 +757,21 @@ fun SwiftCode.Builder.function(
 fun SwiftCode.Builder.parameter(
         argumentName: String? = null,
         parameterName: String? = null,
-        type: SwiftCode.Type,
-        isInout: Boolean = false,
-        isVariadic: Boolean = false,
+        type: SwiftCode.FunctionArgumentType,
         defaultValue: SwiftCode.Expression? = null,
-) = SwiftCode.Declaration.Function.Parameter(argumentName, parameterName, type, isInout, isVariadic, defaultValue)
+) = SwiftCode.Declaration.Function.Parameter(argumentName, parameterName, type, defaultValue)
 
 fun SwiftCode.Builder.`var`(
         name: String,
         type: SwiftCode.Type? = null,
         value: SwiftCode.Expression? = null,
+        retention: SwiftCode.ReferenceRetention = SwiftCode.ReferenceRetention.Strong,
         attributes: List<SwiftCode.Attribute> = emptyList(),
         visibility: SwiftCode.Declaration.Visibility = SwiftCode.Declaration.Visibility.INTERNAL,
         willSet: SwiftCode.Declaration.StoredVariable.Observer? = null,
         didSet: SwiftCode.Declaration.StoredVariable.Observer? = null,
 ): SwiftCode.Declaration.StoredVariable {
-    return SwiftCode.Declaration.StoredVariable(name, type, value, attributes, visibility, willSet = willSet, didSet = didSet)
+    return SwiftCode.Declaration.StoredVariable(name, type, value, retention, attributes, visibility, willSet = willSet, didSet = didSet)
 }
 
 fun SwiftCode.Builder.`var`(
@@ -703,10 +789,11 @@ fun SwiftCode.Builder.let(
         name: String,
         type: SwiftCode.Type? = null,
         value: SwiftCode.Expression? = null,
+        retention: SwiftCode.ReferenceRetention = SwiftCode.ReferenceRetention.Strong,
         attributes: List<SwiftCode.Attribute> = emptyList(),
         visibility: SwiftCode.Declaration.Visibility = SwiftCode.Declaration.Visibility.INTERNAL,
 ): SwiftCode.Declaration.Constant {
-    return SwiftCode.Declaration.Constant(name, type, value, attributes, visibility)
+    return SwiftCode.Declaration.Constant(name, type, value, retention, attributes, visibility)
 }
 
 fun SwiftCode.Builder.willSet(
@@ -752,6 +839,10 @@ fun SwiftCode.Builder.defer(body: SwiftCode.StatementsBuilder.() -> Unit) = Swif
 
 val SwiftCode.Builder.nil: SwiftCode.Expression.Nil get() = SwiftCode.Expression.Nil
 
+val SwiftCode.Expression.optional get() = SwiftCode.Expression.Unwrap(this, force = false)
+
+val SwiftCode.Expression.forceUnwrap get() = SwiftCode.Expression.Unwrap(this, force = true)
+
 fun SwiftCode.Builder.access(name: String) = SwiftCode.Expression.Access(null, name)
 
 fun SwiftCode.Expression.access(name: String) = SwiftCode.Expression.Access(this, name)
@@ -765,6 +856,33 @@ fun SwiftCode.Expression.subscript(vararg arguments: SwiftCode.Argument) = Swift
 val SwiftCode.Type.expression get() = SwiftCode.Expression.Type(this)
 
 fun SwiftCode.Type.access(name: String) = expression.access(name)
+
+fun SwiftCode.Builder.closure(
+        captures: List<SwiftCode.Expression.Closure.Capture> = emptyList(),
+        parameters: List<SwiftCode.Expression.Closure.Parameter> = emptyList(),
+        returnType: SwiftCode.Type? = null,
+        isAsync: Boolean = false,
+        isThrowing: Boolean = false,
+        body: SwiftCode.StatementsBuilder.() -> Unit
+) = SwiftCode.Expression.Closure(
+        captures,
+        parameters,
+        returnType,
+        isAsync,
+        isThrowing,
+        SwiftCode.CodeBlock(body)
+)
+
+fun SwiftCode.Builder.closureParameter(
+        name: String,
+        type: SwiftCode.FunctionArgumentType? = null,
+) = SwiftCode.Expression.Closure.Parameter(name, type)
+
+fun SwiftCode.Builder.capture(
+        name: String,
+        retention: SwiftCode.ReferenceRetention = SwiftCode.ReferenceRetention.Strong,
+        value: SwiftCode.Expression?
+) = SwiftCode.Expression.Closure.Capture(name, retention, value)
 
 //endregion
 

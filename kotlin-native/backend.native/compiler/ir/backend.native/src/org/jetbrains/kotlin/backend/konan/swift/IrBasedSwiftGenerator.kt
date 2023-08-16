@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.builtins.PrimitiveType
 import org.jetbrains.kotlin.builtins.UnsignedType
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.explicitParameters
@@ -47,7 +48,15 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
 
         // ObjHeader *Kotlin_SwiftExport_swiftObjectToRef(id obj);
         private val swiftObjectToRef = CCode.build {
-            function(void.pointer, "swiftObjectToRef", arguments = listOf(variable(void.pointer)), attributes = listOf(asm("_Kotlin_SwiftExport_swiftObjectToRef")))
+            function(void.pointer, "swiftObjectToRef", arguments = listOf(variable(void.pointer), variable(void.pointer)), attributes = listOf(asm("_Kotlin_SwiftExport_swiftObjectToRef")))
+        }
+
+        private val enterFrame = CCode.build {
+            function(void, "EnterFrame", listOf(variable(void.pointer), variable(int), variable(int)))
+        }
+
+        private val leaveFrame = CCode.build {
+            function(void, "LeaveFrame", listOf(variable(void.pointer), variable(int), variable(int)))
         }
 
         private val bridgeFromKotlin = SwiftCode.build {
@@ -69,32 +78,101 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
             val T = "T".type
             function(
                     "bridgeToKotlin",
-                    parameters = listOf(parameter(parameterName = "obj", type = T)),
+                    parameters = listOf(parameter(parameterName = "obj", type = T), parameter(argumentName = "slot", type = "UnsafeMutableRawPointer".type)),
                     genericTypes = listOf(T.name.genericParameter(constraint = "AnyObject".type)),
                     returnType = "UnsafeMutableRawPointer".type,
                     attributes = listOf(attribute("inline", "__always".identifier)),
                     visibility = private
             ) {
                 +let("ptr", value = "Unmanaged".type.withGenericArguments(T).access("passUnretained").call("obj".identifier).access("toOpaque").call())
-                +`return`(swiftObjectToRef.name!!.identifier.call("ptr".identifier))
+                +`return`(swiftObjectToRef.name!!.identifier.call("ptr".identifier, "slot".identifier))
             }
         }
+
+        private val pointerExtensions = SwiftCode.build {
+            """
+            extension UnsafeMutableBufferPointer {
+                subscript(pointerAt offset: Int) -> UnsafeMutablePointer<Element>? {
+                    return self.baseAddress?.advanced(by: offset)
+                }
+            }
+            """.trimIndent().declaration()
+        }
+
+        private val withUnsafeTemporaryBufferAllocation = SwiftCode.build {
+            """
+            func withUnsafeTemporaryBufferAllocation<H, E, R>(
+                ofHeader: H.Type = H.self,
+                element: E.Type = E.self,
+                count: Int,
+                body: (UnsafeMutablePointer<H>, UnsafeMutableBufferPointer<E>) throws -> R
+            ) rethrows -> R {
+                assert(count >= 0)
+                assert(MemoryLayout<E>.size > 0)
+                
+                let headerElementsCount = MemoryLayout<H>.size == 0 ? 0 : 1 + (MemoryLayout<H>.stride - 1) / MemoryLayout<E>.stride
+                
+                return try withUnsafeTemporaryAllocation(of: E.self, capacity: count + headerElementsCount) { buffer in
+                    try buffer.baseAddress!.withMemoryRebound(to: H.self, capacity: 1) { header in
+                        try body(header, .init(rebasing: buffer[headerElementsCount...]))
+                    }
+                }
+            }
+            """.trimIndent().declaration(attributes = listOf(attribute("inline", "__always".identifier)))
+        }
+
+        private val withUnsafeSlots = SwiftCode.build {
+            """
+            func withUnsafeSlots<R>(
+                count: Int,
+                body: (UnsafeMutableBufferPointer<UnsafeMutableRawPointer>) throws -> R
+            ) rethrows -> R {
+                guard count > 0 else { return try body(.init(start: nil, count: 0)) }
+                return try withUnsafeTemporaryBufferAllocation(ofHeader: KObjHolderFrameInfo.self, element: UnsafeMutableRawPointer.self, count: count) { header, slots in
+                    header.initialize(to: .init(count: UInt32(count)))
+                    EnterFrame(header, 0, CInt(count))
+                    defer { LeaveFrame(header, 0, CInt(count))}
+                    return try body(slots)
+                }
+            }
+            """.trimIndent().declaration(attributes = listOf(attribute("inline", "__always".identifier)))
+        }
+
+        private val objHolder = SwiftCode.build {
+            """
+            private struct KObjHolderFrameInfo {
+                var arena: UnsafeMutableRawPointer? = nil
+                var previous: UnsafeMutableRawPointer? = nil
+                var parameters: UInt32 = 0
+                var count: UInt32
+            }
+            """.trimIndent().declaration()
+        }
+    }
+
+    private interface BridgeCodeGenDelegate {
+        fun getNextSlot(): SwiftCode.Expression
     }
 
     private sealed interface Bridge {
         val swiftType: SwiftCode.Type
         val cType: CCode.Type
-        fun from(expr: SwiftCode.Expression): SwiftCode.Expression
-        fun into(expr: SwiftCode.Expression): SwiftCode.Expression
+        fun from(expr: SwiftCode.Expression, delegate: BridgeCodeGenDelegate): SwiftCode.Expression
+        fun into(expr: SwiftCode.Expression, delegate: BridgeCodeGenDelegate): SwiftCode.Expression
 
         data class Object(override val swiftType: SwiftCode.Type, override val cType: CCode.Type): Bridge {
-            override fun from(expr: SwiftCode.Expression) = SwiftCode.build { bridgeFromKotlin.name.identifier.call(expr) }
-            override fun into(expr: SwiftCode.Expression) = SwiftCode.build { bridgeToKotlin.name.identifier.call(expr) }
+            override fun from(expr: SwiftCode.Expression, delegate: BridgeCodeGenDelegate) = SwiftCode.build {
+                bridgeFromKotlin.name.identifier.call(expr)
+            }
+
+            override fun into(expr: SwiftCode.Expression, delegate: BridgeCodeGenDelegate) = SwiftCode.build {
+                bridgeToKotlin.name.identifier.call(expr, "slot" of delegate.getNextSlot())
+            }
         }
 
         data class AsIs(override val swiftType: SwiftCode.Type, override val cType: CCode.Type): Bridge {
-            override fun from(expr: SwiftCode.Expression) = expr
-            override fun into(expr: SwiftCode.Expression) = expr
+            override fun from(expr: SwiftCode.Expression, delegate: BridgeCodeGenDelegate) = expr
+            override fun into(expr: SwiftCode.Expression, delegate: BridgeCodeGenDelegate) = expr
         }
     }
 
@@ -102,6 +180,10 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
     private val swiftDeclarations = mutableListOf<SwiftCode.Declaration>(
             bridgeFromKotlin,
             bridgeToKotlin,
+            withUnsafeSlots,
+            withUnsafeTemporaryBufferAllocation,
+            objHolder,
+            pointerExtensions,
     )
 
     // FIXME: we shouldn't manually generate c headers for our existing code, but here we are.
@@ -117,6 +199,8 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
                 declare(switchThreadStateToNative),
                 declare(refToSwiftObject),
                 declare(swiftObjectToRef),
+                declare(enterFrame),
+                declare(leaveFrame),
         )
     }
 
@@ -138,6 +222,7 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
         val name = declaration.name.identifier
         val cName = "__kn_${name}"
         val symbolName = "_" + with(KonanBinaryInterface) { declaration.symbolName }
+        val hasObjHolderParameter = declaration.returnType.isClass
 
         cDeclarations.add(CCode.build {
             declare(function(
@@ -145,7 +230,7 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
                     name = cName,
                     arguments = declaration.explicitParameters.map {
                         variable(mapTypeToC(it.type) ?: return, it.name.asString())
-                    },
+                    } + listOfNotNull(variable(void.pointer).takeIf { hasObjHolderParameter }),
                     attributes = listOf(asm(symbolName))
             ))
         })
@@ -162,10 +247,24 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
             ) {
                 +initRuntimeIfNeeded.name!!.identifier.call()
                 +switchThreadStateToRunnable.name!!.identifier.call()
+
+                val bridgeDelegate = object : BridgeCodeGenDelegate {
+                    var slotsCount: Int = 0
+                    override fun getNextSlot() = "slots".identifier.subscript("pointerAt" of slotsCount++.literal).forceUnwrap
+                }
+
+                val unsafeSlotsBody = closure(parameters =  listOf(closureParameter("slots"))) {
+                    val extraSlotParameter = if (hasObjHolderParameter) bridgeDelegate.getNextSlot() else null
+                    +returnTypeBridge.from(
+                            cName.identifier.call(parameterBridges.map { it.second.into(it.first.identifier, bridgeDelegate) } + listOfNotNull(extraSlotParameter)),
+                            bridgeDelegate,
+                    )
+                }
+
                 val result = +let(
                         "result",
                         type = returnTypeBridge.swiftType,
-                        value = returnTypeBridge.from(cName.identifier.call(parameterBridges.map { it.second.into(it.first.identifier) }))
+                        value = "withUnsafeSlots".identifier.call("count" of bridgeDelegate.slotsCount.literal, "body" of unsafeSlotsBody)
                 )
                 +switchThreadStateToNative.name!!.identifier.call()
                 +`return`(result.name.identifier)
@@ -244,5 +343,8 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
 
 private val IrType.isRegularClass: Boolean
     get() = this.classOrNull?.owner?.kind == ClassKind.CLASS
+
+private val IrType.isClass: Boolean
+    get() = this.classOrNull?.owner is IrClass && !this.isPrimitiveType(false) && !this.isUnsignedType(false)
 
 private fun CCode.Builder.asm(name: String) = rawAttribute("asm".identifier.call(name.literal))
