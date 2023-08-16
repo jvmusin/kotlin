@@ -359,10 +359,10 @@ internal constructor(
     val commonSources: ConfigurableFileCollection = project.files()
 
     @Optional
-    @get:Input
+    @get:Internal
     val konanDataDir: Provider<String?> = project.provider { project.konanDataDir }
 
-    @get:Input
+    @get:Internal
     val konanHome: Provider<String> = project.provider { project.konanHome }
 
     @get:Nested
@@ -1080,10 +1080,10 @@ abstract class CInteropProcess @Inject internal constructor(params: Params) :
         get() = outputFileProvider.get()
 
     @Optional
-    @get:Input
+    @get:Internal
     val konanDataDir: Provider<String?> = project.provider { project.konanDataDir }
 
-    @get:Input
+    @get:Internal
     val konanHome: Provider<String> = project.provider { project.konanHome }
 
     private val runnerSettings = KotlinNativeToolRunner.Settings.of(konanHome.get(), konanDataDir.getOrNull(), project)

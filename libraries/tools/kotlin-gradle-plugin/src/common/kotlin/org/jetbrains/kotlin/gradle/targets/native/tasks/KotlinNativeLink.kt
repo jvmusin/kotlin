@@ -64,10 +64,10 @@ constructor(
         get() = binary.compilation
 
     @Optional
-    @get:Input
+    @get:Internal
     val konanDataDir: Provider<String?> = project.provider { project.konanDataDir }
 
-    @get:Input
+    @get:Internal
     val konanHome: Provider<String> = project.provider { project.konanHome }
 
     private val runnerSettings = KotlinNativeCompilerRunner.Settings.of(konanHome.get(), konanDataDir.getOrNull(), project)
