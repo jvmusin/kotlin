@@ -13,7 +13,6 @@ import java.util.AbstractCollection
  * @param E the type of elements contained in the collection. The collection is invariant in its element type.
  */
 @SinceKotlin("1.1")
-@OptIn(ExperimentalMultiplatform::class)
 @AllowDifferentMembersInActual // New 'AbstractCollection` supertype is added compared to the expect declaration
 public actual abstract class AbstractMutableCollection<E> protected actual constructor() : MutableCollection<E>, AbstractCollection<E>() {
     /**

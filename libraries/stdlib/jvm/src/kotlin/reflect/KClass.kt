@@ -13,7 +13,6 @@ package kotlin.reflect
  *
  * @param T the type of the class.
  */
-@OptIn(ExperimentalMultiplatform::class)
 @AllowDifferentMembersInActual // KClass for JVM adds a lot of new members compared to the expect declaration
 public actual interface KClass<T : Any> : KDeclarationContainer, KAnnotatedElement, KClassifier {
     /**

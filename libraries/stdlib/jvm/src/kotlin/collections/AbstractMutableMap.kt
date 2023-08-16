@@ -16,7 +16,6 @@ import java.util.AbstractMap
  * @param V the type of map values. The map is invariant in its value type.
  */
 @SinceKotlin("1.1")
-@OptIn(ExperimentalMultiplatform::class)
 @AllowDifferentMembersInActual // New 'AbstractMap` supertype is added compared to the expect declaration
 public actual abstract class AbstractMutableMap<K, V> protected actual constructor() : MutableMap<K, V>, AbstractMap<K, V>() {
     /**

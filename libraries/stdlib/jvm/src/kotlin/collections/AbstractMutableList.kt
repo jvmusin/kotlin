@@ -13,7 +13,6 @@ import java.util.AbstractList
  * @param E the type of elements contained in the list. The list is invariant in its element type.
  */
 @SinceKotlin("1.1")
-@OptIn(ExperimentalMultiplatform::class)
 @AllowDifferentMembersInActual // New 'AbstractList` supertype is added compared to the expect declaration
 public actual abstract class AbstractMutableList<E> protected actual constructor() : MutableList<E>, AbstractList<E>() {
     /**
