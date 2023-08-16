@@ -14,7 +14,7 @@ fun main() {
         memScoped {
             println("Hello, Kotlin/Native! ${it.ptr.pointed.d}")
         }
-        callbackCounter.increment()
+        callbackCounter.incrementAndGet()
     }
 
     assertEquals(0, callbackCounter.value)
