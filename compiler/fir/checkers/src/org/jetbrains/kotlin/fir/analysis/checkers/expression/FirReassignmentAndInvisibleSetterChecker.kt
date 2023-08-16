@@ -148,10 +148,18 @@ object FirReassignmentAndInvisibleSetterChecker : FirVariableAssignmentChecker()
 
     private fun isInOwnersInitializer(receiver: FirExpression, context: CheckerContext): Boolean {
         val uninitializedThisSymbol = (receiver as? FirThisReceiverExpression)?.calleeReference?.boundSymbol ?: return false
+        val containingDeclarations = context.containingDeclarations
         var foundInitializer = false
-        for ((i, declaration) in context.containingDeclarations.withIndex()) {
+        for ((i, declaration) in containingDeclarations.withIndex()) {
             if (declaration is FirClass) {
-                foundInitializer = if (context.containingDeclarations.getOrNull(i + 1)?.evaluatedInPlace == false) {
+                // Properties need special consideration as some parts are evaluated in-place (initializers) and others are not (accessors).
+                // So it is not enough to just check the FirProperty - which is treated as in-place - but the following declaration needs to
+                // be checked if and only if it is a property accessor.
+                val container = when (val next = containingDeclarations.getOrNull(i + 1)) {
+                    is FirProperty -> containingDeclarations.getOrNull(i + 2)?.takeIf { it is FirPropertyAccessor } ?: next
+                    else -> next
+                }
+                foundInitializer = if (container?.evaluatedInPlace == false) {
                     // In member function of a class, assume all outer classes are already initialized
                     // by the time this function is called.
                     false
