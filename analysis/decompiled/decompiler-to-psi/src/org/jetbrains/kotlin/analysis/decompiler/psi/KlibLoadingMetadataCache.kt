@@ -86,7 +86,7 @@ class KlibLoadingMetadataCache {
     private fun isMetadataCompatible(libraryRoot: VirtualFile): Boolean {
         val metadataVersion = getCachedMetadataVersion(libraryRoot) ?: return false
 
-        return metadataVersion.isCompatible()
+        return metadataVersion.isCompatibleWithCurrentCompilerVersion()
     }
 
     private fun computePackageFragment(packageFragmentFile: VirtualFile): ProtoBuf.PackageFragment? {
