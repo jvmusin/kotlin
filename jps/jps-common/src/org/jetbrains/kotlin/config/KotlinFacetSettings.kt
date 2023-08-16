@@ -160,7 +160,7 @@ data class ExternalSystemNativeMainRunTask(
 interface IKotlinFacetSettings {
     var version: Int
     var useProjectSettings: Boolean
-    var mergedCompilerArguments: CommonCompilerArguments?
+    val mergedCompilerArguments: CommonCompilerArguments?
     var compilerArguments: CommonCompilerArguments?
     var compilerSettings: CompilerSettings?
     var languageLevel: LanguageVersion?
@@ -206,7 +206,9 @@ class KotlinFacetSettings: IKotlinFacetSettings {
     override var version = CURRENT_VERSION
     override var useProjectSettings: Boolean = true
 
-    override var mergedCompilerArguments: CommonCompilerArguments? = null
+    private var _mergedCompilerArguments: CommonCompilerArguments? = null
+    override val mergedCompilerArguments: CommonCompilerArguments?
+        get() = _mergedCompilerArguments
 
     // TODO: Workaround for unwanted facet settings modification on code analysis
     // To be replaced with proper API for settings update (see BaseKotlinCompilerSettings as an example)
@@ -214,7 +216,7 @@ class KotlinFacetSettings: IKotlinFacetSettings {
         val compilerArguments = compilerArguments
         val compilerSettings = compilerSettings
 
-        mergedCompilerArguments = if (compilerArguments != null) {
+        _mergedCompilerArguments = if (compilerArguments != null) {
             compilerArguments.copyOf().apply {
                 if (compilerSettings != null) {
                     parseCommandLineArguments(compilerSettings.additionalArgumentsAsList, this)
