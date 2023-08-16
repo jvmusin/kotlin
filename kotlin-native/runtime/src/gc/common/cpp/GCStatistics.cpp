@@ -206,13 +206,6 @@ bool GCHandle::isValid() const {
 void GCHandle::finished() {
     std::lock_guard guard(lock);
     if (auto* stat = statByEpoch(epoch_)) {
-        if (stat->markStats && stat->sweepStats.heap) {
-            auto kept = stat->sweepStats.heap->keptCount;
-            auto marked = stat->markStats->markedCount;
-            RuntimeAssert(marked == kept,
-                          "Mismatch in statistics: marked %" PRId64 " objects, while %" PRId64 " are alive after sweep", marked, kept);
-        }
-
         stat->endTime = static_cast<KLong>(konan::getTimeNanos());
         stat->memoryUsageAfter.heap = currentHeapUsage();
         if (stat->rootSet) {
@@ -302,6 +295,15 @@ void GCHandle::threadsAreSuspended() {
             auto time = (startTime - *requestTime) / 1000;
             GCLogDebug(epoch_, "Suspended all threads in %" PRIu64 " microseconds", time);
             return;
+        }
+    }
+    if (last.epoch) {
+        // Assisted sweeping from the last epoch must be completed before the check can be run.
+        if (last.markStats && last.sweepStats.heap) {
+            RuntimeAssert(
+                    last.markStats->markedCount == last.sweepStats.heap->keptCount,
+                    "Mismatch in statistics: marked %" PRId64 " objects, while %" PRId64 " are alive after sweep",
+                    last.markStats->markedCount, last.sweepStats.heap->keptCount);
         }
     }
 }

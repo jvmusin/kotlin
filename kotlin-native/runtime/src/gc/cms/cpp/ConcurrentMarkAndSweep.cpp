@@ -216,6 +216,8 @@ void gc::ConcurrentMarkAndSweep::PerformFullGC(int64_t epoch) noexcept {
     // would not publish into the global state at an unexpected time.
     std::optional objectFactoryIterable = gc.objectFactory().LockForIter();
     std::optional extraObjectFactoryIterable = gc.extraObjectDataFactory().LockForIter();
+
+    checkMarkCorrectness(*objectFactoryIterable);
 #endif
 
     mm::ResumeThreads();

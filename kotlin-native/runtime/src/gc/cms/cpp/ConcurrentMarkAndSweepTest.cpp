@@ -1062,6 +1062,11 @@ TEST_P(ConcurrentMarkAndSweepTest, MultipleMutatorsWeakNewObj) {
             })();
             EXPECT_NE(objectWeak.get(), nullptr);
 
+            auto& extraObj = *mm::ExtraObjectData::Get(object.header());
+            extraObj.ClearRegularWeakReferenceImpl();
+            extraObj.Uninstall();
+            mm::GlobalData::Instance().gc().DestroyExtraObjectData(extraObj);
+
             while (!gcDone.load(std::memory_order_relaxed)) {
                 mm::safePoint(threadData);
             }
@@ -1074,8 +1079,6 @@ TEST_P(ConcurrentMarkAndSweepTest, MultipleMutatorsWeakNewObj) {
     for (auto& future : gcFutures) {
         future.wait();
     }
-
-    mutators.clear();
 }
 
 TEST_P(ConcurrentMarkAndSweepTest, NewThreadsWhileRequestingCollection) {

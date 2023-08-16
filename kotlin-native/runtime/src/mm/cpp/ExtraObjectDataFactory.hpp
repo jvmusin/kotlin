@@ -45,13 +45,7 @@ public:
     // Lock registry for safe iteration.
     Iterable LockForIter() noexcept { return extraObjects_.LockForIter(); }
 
-    void ClearForTests() noexcept {
-        for (auto& extraObjectData: extraObjects_.LockForIter()) {
-            extraObjectData.ClearRegularWeakReferenceImpl();
-            extraObjectData.Uninstall();
-        }
-        extraObjects_.ClearForTests();
-    }
+    void ClearForTests() noexcept { extraObjects_.ClearForTests(); }
 
     size_t GetSizeUnsafe() noexcept { return extraObjects_.GetSizeUnsafe(); }
 

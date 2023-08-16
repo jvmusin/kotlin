@@ -281,7 +281,14 @@ public:
 };
 
 template <typename TestCase>
-class ObjectTestSupportArrayTest : public testing::Test {};
+class ObjectTestSupportArrayTest : public testing::Test {
+public:
+    ObjectTestSupportArrayTest() {}
+
+    ~ObjectTestSupportArrayTest() {
+        //mm::GlobalData::Instance().gc().ClearForTests();
+    }
+};
 using ArrayTestCases = testing::Types<
         ArrayTestCase<ObjHeader*, 0>,
         ArrayTestCase<ObjHeader*, 3>,
