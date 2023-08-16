@@ -358,7 +358,6 @@ internal constructor(
     @get:Internal // these sources are normally a subset of `source` ones which are already tracked
     val commonSources: ConfigurableFileCollection = project.files()
 
-    @Optional
     @get:Internal
     val konanDataDir: Provider<String?> = project.provider { project.konanDataDir }
 
@@ -1079,7 +1078,6 @@ abstract class CInteropProcess @Inject internal constructor(params: Params) :
     val outputFile: File
         get() = outputFileProvider.get()
 
-    @Optional
     @get:Internal
     val konanDataDir: Provider<String?> = project.provider { project.konanDataDir }
 

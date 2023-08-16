@@ -63,7 +63,6 @@ constructor(
     val compilation: KotlinNativeCompilation
         get() = binary.compilation
 
-    @Optional
     @get:Internal
     val konanDataDir: Provider<String?> = project.provider { project.konanDataDir }
 

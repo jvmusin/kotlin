@@ -177,7 +177,6 @@ abstract class KotlinNativeLinkArtifactTask @Inject constructor(
     val metrics: Property<BuildMetricsReporter<GradleBuildTime, GradleBuildPerformanceMetric>> = project.objects
         .property(GradleBuildMetricsReporter())
 
-    @Optional
     @get:Internal
     val konanDataDir: Provider<String?> = project.provider { project.konanDataDir }
 
