@@ -192,7 +192,7 @@ class NativeCompilerDownloader(
     }
 
     fun downloadIfNeeded() {
-        checkClassPath()
+        checkClassPath() // This is workaround to avoid double execution configuration phase. See KT-61154 for more details
         if (NEED_TO_DOWNLOAD_FLAG) {
             downloadAndExtract()
         }
