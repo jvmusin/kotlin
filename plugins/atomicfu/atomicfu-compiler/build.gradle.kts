@@ -88,7 +88,7 @@ dependencies {
     testImplementation(projectTests(":generators:test-generator"))
 
     testImplementation(projectTests(":js:js.tests"))
-    testApi(commonDependency("junit:junit"))
+    testApi(libs.junit4)
     testApi(project(":kotlin-test:kotlin-test-jvm"))
 
     // Dependencies for Kotlin/Native test infra:
@@ -152,7 +152,7 @@ dependencies {
 
     testImplementation("org.jetbrains.kotlinx:atomicfu:0.21.0")
 
-    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.9.1")
+    testRuntimeOnly(libs.junit.vintage.engine)
 }
 
 optInToExperimentalCompilerApi()
