@@ -32,7 +32,7 @@ public expect interface KClass<T : Any> : KClassifier {
     @SinceKotlin("1.1")
     public fun isInstance(value: Any?): Boolean
 
-    override fun equals(other: Any?): Boolean
+    override fun equals(other: Any?): Boolean // KT-61146
 
-    override fun hashCode(): Int
+    override fun hashCode(): Int // KT-61146
 }
