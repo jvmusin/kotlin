@@ -107,16 +107,18 @@ internal fun matchActualWithNonFinalExpect(
     declaration as KtClassLikeDeclaration
     descriptor as ClassifierDescriptorWithTypeParameters
 
+    if (!descriptor.isActual) return null
+
     with(OptInUsageChecker) {
         if (declaration.isDeclarationAnnotatedWith(allowDifferentMembersInActualFqn, context.trace.bindingContext)) return null
     }
 
     val actual = when (descriptor) {
-        is ClassDescriptor -> descriptor.takeIf(MemberDescriptor::isActual)
+        is ClassDescriptor -> descriptor
         is TypeAliasDescriptor -> descriptor.classDescriptor
         else -> error("ClassifierDescriptorWithTypeParameters has only two inheritors")
     } ?: return null
-    // If actual is final than expect is final as well (otherwise another checker will report a diagnostic).
+    // If actual is final then expect is final as well (otherwise another checker will report a diagnostic).
     // There is no need to waste time searching for the appropriate expect and checking its modality. This `if` is an optimization
     if (actual.modality == Modality.FINAL) return null
 
