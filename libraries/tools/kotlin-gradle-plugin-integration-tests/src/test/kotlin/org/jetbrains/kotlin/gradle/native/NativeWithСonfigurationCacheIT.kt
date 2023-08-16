@@ -19,7 +19,7 @@ class NativeWithConfigurationCacheIT : KGPBaseTest() {
         "Configuration phase should be reused from configuration cache for the second build " +
                 "(downloading konan does not affect cache inputs)"
     )
-    @GradleTestVersions(minVersion = TestVersions.Gradle.G_8_1)
+    @GradleTestVersions(minVersion = TestVersions.Gradle.G_8_1) // Since 8.1 Gradle on configuration cache it detects when the build logic accesses the "outside world" more strict https://docs.gradle.org/8.1.1/release-notes.html#configuration-inputs-detection-improvements
     @GradleTest
     fun testConfigurationCacheReusedSecondTime(gradleVersion: GradleVersion) {
         nativeProject("native-with-configuration-cache", gradleVersion, enableGradleDebug = true) {

@@ -19,6 +19,8 @@ import org.jetbrains.kotlin.compilerRunner.konanVersion
 import org.jetbrains.kotlin.gradle.logging.kotlinInfo
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider.Companion.kotlinPropertiesProvider
+import org.jetbrains.kotlin.gradle.plugin.internal.configurationTimePropertiesAccessor
+import org.jetbrains.kotlin.gradle.plugin.internal.usedAtConfigurationTime
 import org.jetbrains.kotlin.gradle.targets.native.internal.NativeDistributionType
 import org.jetbrains.kotlin.gradle.targets.native.internal.NativeDistributionTypeProvider
 import org.jetbrains.kotlin.gradle.targets.native.internal.PlatformLibrariesGenerator
@@ -38,7 +40,7 @@ class NativeCompilerDownloader(
             loadPropertyFromResources("project.properties", "kotlin.native.version")
         }
 
-        var NEED_TO_DOWNLOAD_FLAG: Boolean = true
+        internal var NEED_TO_DOWNLOAD_FLAG: Boolean = true
 
         internal const val BASE_DOWNLOAD_URL = "https://download.jetbrains.com/kotlin/native/builds"
         internal const val KOTLIN_GROUP_ID = "org.jetbrains.kotlin"
@@ -121,7 +123,7 @@ class NativeCompilerDownloader(
         }
     }
 
-    fun downloadAndExtract() {
+    private fun downloadAndExtract() {
         val repo = if (!kotlinProperties.nativeDownloadFromMaven) {
             setupRepo(repoUrl)
         } else null
@@ -199,10 +201,10 @@ class NativeCompilerDownloader(
     private fun checkClassPath() {
         project.providers.of(NativeCompilerDownloaderClassPathChecker::class.java) {
             it.parameters.classPath.setFrom(KotlinNativeToolRunner.Settings.fromProject(project).classpath)
-        }.forUseAtConfigurationTime().get()
+        }.usedAtConfigurationTime(project.configurationTimePropertiesAccessor).get()
     }
 
-    abstract class NativeCompilerDownloaderClassPathChecker : ValueSource<Boolean, NativeCompilerDownloaderClassPathChecker.Params> {
+    internal abstract class NativeCompilerDownloaderClassPathChecker : ValueSource<Boolean, NativeCompilerDownloaderClassPathChecker.Params> {
 
         interface Params : ValueSourceParameters {
             val classPath: ConfigurableFileCollection
