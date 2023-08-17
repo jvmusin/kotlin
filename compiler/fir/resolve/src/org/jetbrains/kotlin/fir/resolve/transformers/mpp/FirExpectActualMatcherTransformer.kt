@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.fir.resolve.transformers.mpp
 
 import org.jetbrains.kotlin.config.LanguageFeature
-import org.jetbrains.kotlin.fir.FirExpectActualMatchingContext
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.utils.isActual
@@ -16,10 +15,7 @@ import org.jetbrains.kotlin.fir.languageVersionSettings
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.transformers.FirAbstractTreeTransformer
 import org.jetbrains.kotlin.fir.resolve.transformers.FirTransformerBasedResolveProcessor
-import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
-import org.jetbrains.kotlin.mpp.DeclarationSymbolMarker
-import org.jetbrains.kotlin.resolve.multiplatform.ExpectActualCompatibility
 
 class FirExpectActualMatcherProcessor(
     session: FirSession,
@@ -40,14 +36,7 @@ open class FirExpectActualMatcherTransformer(
     private val scopeSession: ScopeSession,
 ) : FirAbstractTreeTransformer<Nothing?>(FirResolvePhase.EXPECT_ACTUAL_MATCHING) {
 
-    private val expectActualMatchingContext =
-        object : FirExpectActualMatchingContext by session.expectActualMatchingContextFactory.create(session, scopeSession) {
-
-            override fun onMatchedMembers(expectSymbol: DeclarationSymbolMarker, actualSymbol: DeclarationSymbolMarker) {
-                require(expectSymbol is FirBasedSymbol<*> && actualSymbol is FirBasedSymbol<*>)
-                actualSymbol.fir.expectForActual = mapOf(ExpectActualCompatibility.Compatible to listOf(expectSymbol))
-            }
-        }
+    private val expectActualMatchingContext = session.expectActualMatchingContextFactory.create(session, scopeSession)
 
     // --------------------------- classifiers ---------------------------
     override fun transformTypeAlias(typeAlias: FirTypeAlias, data: Nothing?): FirStatement {

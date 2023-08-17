@@ -14,7 +14,6 @@ import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirConstExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
-import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.resolve.*
 import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.scopes.*
@@ -28,6 +27,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.calls.mpp.ExpectActualCollectionArgumentsCompatibilityCheckStrategy
 import org.jetbrains.kotlin.resolve.calls.mpp.ExpectActualMatchingContext.AnnotationCallInfo
 import org.jetbrains.kotlin.resolve.checkers.OptInNames
+import org.jetbrains.kotlin.resolve.multiplatform.ExpectActualCompatibility
 import org.jetbrains.kotlin.types.AbstractTypeChecker
 import org.jetbrains.kotlin.types.TypeCheckerState
 import org.jetbrains.kotlin.types.Variance
@@ -395,6 +395,66 @@ class FirExpectActualMatchingContextImpl private constructor(
             val symbol = asSymbol()
             return symbol.source == null && symbol.origin !is FirDeclarationOrigin.Plugin
         }
+
+    override fun onMatchedMembers(
+        expectSymbol: DeclarationSymbolMarker,
+        actualSymbol: DeclarationSymbolMarker,
+        containingExpectClassSymbol: RegularClassSymbolMarker?,
+        containingActualClassSymbol: RegularClassSymbolMarker?
+    ) {
+        if (containingActualClassSymbol == null || containingExpectClassSymbol == null) return
+
+        containingActualClassSymbol.asSymbol().addMemberExpectForActualMapping(
+            expectSymbol.asSymbol(),
+            actualSymbol.asSymbol(),
+            containingExpectClassSymbol.asSymbol(),
+            ExpectActualCompatibility.Compatible
+        )
+    }
+
+    override fun onMismatchedMembersFromClassScope(
+        expectSymbol: DeclarationSymbolMarker,
+        actualSymbolsByIncompatibility: Map<ExpectActualCompatibility.Incompatible<*>, List<DeclarationSymbolMarker>>,
+        containingExpectClassSymbol: RegularClassSymbolMarker?,
+        containingActualClassSymbol: RegularClassSymbolMarker?
+    ) {
+        if (containingExpectClassSymbol == null || containingActualClassSymbol == null) return
+
+        for ((incompatibility, actualSymbols) in actualSymbolsByIncompatibility.entries) {
+            for (actualSymbol in actualSymbols) {
+                containingActualClassSymbol.asSymbol().addMemberExpectForActualMapping(
+                    expectSymbol.asSymbol(),
+                    actualSymbol.asSymbol(),
+                    containingExpectClassSymbol.asSymbol(),
+                    incompatibility,
+                )
+            }
+        }
+    }
+
+    private fun FirRegularClassSymbol.addMemberExpectForActualMapping(
+        expectMember: FirBasedSymbol<*>, actualMember: FirBasedSymbol<*>,
+        expectClassSymbol: FirRegularClassSymbol, compatibility: ExpectActualCompatibility<*>,
+    ) {
+        val fir = fir
+        val expectForActualMap = fir.memberExpectForActual ?: mutableMapOf()
+        fir.memberExpectForActual = expectForActualMap
+
+        val expectToCompatibilityMap = expectForActualMap.asMutableMap()
+            .computeIfAbsent(actualMember to expectClassSymbol) { mutableMapOf() }
+
+        /*
+        Don't report when value is overwritten, because it's the case for actual inner classes:
+        actual class A {
+            actual class B {
+                actual fun foo() {} <-- twice checked (from A and B) and added to mapping
+            }
+        }
+         */
+        expectToCompatibilityMap.asMutableMap()[expectMember] = compatibility
+    }
+
+    private fun <K, V> Map<K, V>.asMutableMap(): MutableMap<K, V> = this as MutableMap
 
     object Factory : FirExpectActualMatchingContextFactory {
         override fun create(session: FirSession, scopeSession: ScopeSession): FirExpectActualMatchingContextImpl =
