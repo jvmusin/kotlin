@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.fir.tree.generator.printer
 
+import org.jetbrains.kotlin.fir.tree.generator.baseAbstractElementType
 import org.jetbrains.kotlin.fir.tree.generator.context.AbstractFirTreeBuilder
 import org.jetbrains.kotlin.fir.tree.generator.model.Element
 import org.jetbrains.kotlin.fir.tree.generator.model.Field
@@ -24,7 +25,7 @@ fun Element.generateCode(generationPath: File): GeneratedFile {
         printCopyright()
         println("package $packageName")
         println()
-        val imports = collectImports()
+        val imports = collectImports() + listOf(baseAbstractElementType.fullQualifiedName)
         imports.forEach { println("import $it") }
         if (imports.isNotEmpty()) {
             println()
@@ -96,7 +97,7 @@ fun SmartPrinter.printElement(element: Element) {
                 println()
                 println("@Suppress(\"UNCHECKED_CAST\")")
                 override()
-                println("fun <E : FirElementInterface, D> transform(transformer: FirTransformer<D>, data: D): E =")
+                println("fun <E : FirElement, D> transform(transformer: FirTransformer<D>, data: D): E =")
                 withIndent {
                     println("transformer.transform$name(this, data) as E")
                 }
