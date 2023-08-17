@@ -1469,7 +1469,7 @@ object FirErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
             FQ_NAMES_IN_TYPES
         )
 
-        val multipleDefaultsMessage = "More than one overridden descriptor declares a default value for ''{0}''. As the compiler can not make sure these values agree, this is not allowed."
+        val multipleDefaultsMessage = "More than one overridden function declares a default value for ''{0}''. As the compiler can not make sure these values agree, this is not allowed."
         map.put(MULTIPLE_DEFAULTS_INHERITED_FROM_SUPERTYPES, multipleDefaultsMessage, SYMBOL)
         map.put(MULTIPLE_DEFAULTS_INHERITED_FROM_SUPERTYPES_WHEN_NO_EXPLICIT_OVERRIDE, multipleDefaultsMessage, SYMBOL)
 
