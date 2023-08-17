@@ -148,6 +148,9 @@ private class FirDeclarationsResolveTransformerForAnnotationArgumentsMapping(
         return constructor
     }
 
+    override fun transformErrorConstructor(errorConstructor: FirErrorConstructor, data: ResolutionMode) =
+        transformConstructor(errorConstructor, data)
+
     override fun transformValueParameter(valueParameter: FirValueParameter, data: ResolutionMode): FirStatement {
         context.withValueParameter(valueParameter, session) {
             valueParameter

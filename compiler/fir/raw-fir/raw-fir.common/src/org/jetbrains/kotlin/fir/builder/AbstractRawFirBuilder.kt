@@ -253,6 +253,8 @@ abstract class AbstractRawFirBuilder<T>(val baseSession: FirSession, val context
         }
     }
 
+    fun createErrorConstructorBuilder(diagnostic: ConeDiagnostic) = FirErrorConstructorBuilder().apply { this.diagnostic = diagnostic }
+
     fun FirLoopBuilder.prepareTarget(firLabelUser: Any): FirLoopTarget = prepareTarget(context.getLastLabel(firLabelUser))
 
     fun FirLoopBuilder.prepareTarget(label: FirLabel?): FirLoopTarget {

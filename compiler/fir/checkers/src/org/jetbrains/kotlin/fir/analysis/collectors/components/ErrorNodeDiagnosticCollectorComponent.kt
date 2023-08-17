@@ -126,6 +126,10 @@ class ErrorNodeDiagnosticCollectorComponent(
         reportFirDiagnostic(errorImport.diagnostic, source, data)
     }
 
+    override fun visitErrorConstructor(errorConstructor: FirErrorConstructor, data: CheckerContext) {
+        reportFirDiagnostic(errorConstructor.diagnostic, errorConstructor.source, data)
+    }
+
     private fun reportFirDiagnostic(
         diagnostic: ConeDiagnostic,
         source: KtSourceElement?,

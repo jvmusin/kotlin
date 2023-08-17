@@ -399,6 +399,8 @@ class FirRenderer(
             bodyRenderer?.renderBody(body, listOfNotNull<FirStatement>(delegatedConstructor))
         }
 
+        override fun visitErrorConstructor(errorConstructor: FirErrorConstructor) = visitConstructor(errorConstructor)
+
         override fun visitPropertyAccessor(propertyAccessor: FirPropertyAccessor) {
             annotationRenderer?.render(propertyAccessor)
             modifierRenderer?.renderModifiers(propertyAccessor)

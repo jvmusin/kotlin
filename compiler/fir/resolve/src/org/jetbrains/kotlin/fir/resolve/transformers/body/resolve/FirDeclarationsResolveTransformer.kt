@@ -689,6 +689,9 @@ open class FirDeclarationsResolveTransformer(
             return doTransformConstructor(constructor, data)
         }
 
+    override fun transformErrorConstructor(errorConstructor: FirErrorConstructor, data: ResolutionMode) =
+        transformConstructor(errorConstructor, data)
+
     private fun doTransformConstructor(constructor: FirConstructor, data: ResolutionMode): FirConstructor {
         val owningClass = context.containerIfAny as? FirRegularClass
 

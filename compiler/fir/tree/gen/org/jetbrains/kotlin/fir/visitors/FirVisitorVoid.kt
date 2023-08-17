@@ -100,6 +100,7 @@ import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirErrorExpression
 import org.jetbrains.kotlin.fir.declarations.FirErrorFunction
 import org.jetbrains.kotlin.fir.declarations.FirErrorProperty
+import org.jetbrains.kotlin.fir.declarations.FirErrorConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDanglingModifierList
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedErrorAccessExpression
@@ -543,6 +544,10 @@ abstract class FirVisitorVoid : FirVisitor<Unit, Nothing?>() {
 
     open fun visitErrorProperty(errorProperty: FirErrorProperty) {
         visitElement(errorProperty)
+    }
+
+    open fun visitErrorConstructor(errorConstructor: FirErrorConstructor) {
+        visitElement(errorConstructor)
     }
 
     open fun visitDanglingModifierList(danglingModifierList: FirDanglingModifierList) {
@@ -1163,6 +1168,10 @@ abstract class FirVisitorVoid : FirVisitor<Unit, Nothing?>() {
 
     final override fun visitErrorProperty(errorProperty: FirErrorProperty, data: Nothing?) {
         visitErrorProperty(errorProperty)
+    }
+
+    final override fun visitErrorConstructor(errorConstructor: FirErrorConstructor, data: Nothing?) {
+        visitErrorConstructor(errorConstructor)
     }
 
     final override fun visitDanglingModifierList(danglingModifierList: FirDanglingModifierList, data: Nothing?) {

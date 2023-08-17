@@ -17,11 +17,11 @@ import org.jetbrains.kotlin.fir.builder.toMutableOrEmpty
 import org.jetbrains.kotlin.fir.contracts.FirContractDescription
 import org.jetbrains.kotlin.fir.contracts.impl.FirEmptyContractDescription
 import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
-import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirContextReceiver
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationAttributes
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
+import org.jetbrains.kotlin.fir.declarations.FirErrorConstructor
 import org.jetbrains.kotlin.fir.declarations.FirReceiverParameter
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirResolveState
@@ -31,7 +31,8 @@ import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.declarations.UnresolvedDeprecationProvider
 import org.jetbrains.kotlin.fir.declarations.asResolveState
 import org.jetbrains.kotlin.fir.declarations.builder.FirAbstractConstructorBuilder
-import org.jetbrains.kotlin.fir.declarations.impl.FirErrorConstructor
+import org.jetbrains.kotlin.fir.declarations.impl.FirErrorConstructorImpl
+import org.jetbrains.kotlin.fir.diagnostics.ConeDiagnostic
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirDelegatedConstructorCall
@@ -68,10 +69,11 @@ class FirErrorConstructorBuilder : FirAbstractConstructorBuilder, FirAnnotationC
     override lateinit var symbol: FirConstructorSymbol
     override var delegatedConstructor: FirDelegatedConstructorCall? = null
     override var body: FirBlock? = null
+    lateinit var diagnostic: ConeDiagnostic
 
     @OptIn(FirImplementationDetail::class)
-    override fun build(): FirConstructor {
-        return FirErrorConstructor(
+    override fun build(): FirErrorConstructor {
+        return FirErrorConstructorImpl(
             source,
             resolvePhase,
             moduleData,
@@ -91,6 +93,7 @@ class FirErrorConstructorBuilder : FirAbstractConstructorBuilder, FirAnnotationC
             symbol,
             delegatedConstructor,
             body,
+            diagnostic,
         )
     }
 
@@ -104,7 +107,7 @@ class FirErrorConstructorBuilder : FirAbstractConstructorBuilder, FirAnnotationC
 }
 
 @OptIn(ExperimentalContracts::class)
-inline fun buildErrorConstructor(init: FirErrorConstructorBuilder.() -> Unit): FirConstructor {
+inline fun buildErrorConstructor(init: FirErrorConstructorBuilder.() -> Unit): FirErrorConstructor {
     contract {
         callsInPlace(init, kotlin.contracts.InvocationKind.EXACTLY_ONCE)
     }

@@ -448,6 +448,9 @@ private abstract class FirLazyBodiesCalculatorTransformer : FirTransformer<Persi
         return constructor
     }
 
+    override fun transformErrorConstructor(errorConstructor: FirErrorConstructor, data: PersistentList<FirRegularClass>) =
+        transformConstructor(errorConstructor, data)
+
     override fun transformProperty(property: FirProperty, data: PersistentList<FirRegularClass>): FirProperty {
         if (needCalculatingLazyBodyForProperty(property)) {
             val designation = FirDesignation(data, property)

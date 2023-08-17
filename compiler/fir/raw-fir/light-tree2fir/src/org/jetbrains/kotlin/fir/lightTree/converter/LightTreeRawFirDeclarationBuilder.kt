@@ -963,7 +963,13 @@ class LightTreeRawFirDeclarationBuilder(
             isFromEnumClass = classWrapper.isEnum()
         }
 
-        val builder = if (isErrorConstructor) FirErrorConstructorBuilder() else FirPrimaryConstructorBuilder()
+        val builder = if (isErrorConstructor) {
+            FirErrorConstructorBuilder().apply {
+                diagnostic = ConeNoConstructorError
+            }
+        } else {
+            FirPrimaryConstructorBuilder()
+        }
         builder.apply {
             source = primaryConstructor?.toFirSourceElement()
                 ?: selfTypeSource?.fakeElement(KtFakeSourceElementKind.ImplicitConstructor)

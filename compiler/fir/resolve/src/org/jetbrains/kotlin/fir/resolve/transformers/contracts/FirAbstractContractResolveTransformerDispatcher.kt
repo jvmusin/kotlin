@@ -300,6 +300,9 @@ abstract class FirAbstractContractResolveTransformerDispatcher(
             }
         }
 
+        override fun transformErrorConstructor(errorConstructor: FirErrorConstructor, data: ResolutionMode) =
+            transformConstructor(errorConstructor, data)
+
         override fun transformEnumEntry(enumEntry: FirEnumEntry, data: ResolutionMode): FirEnumEntry {
             return enumEntry
         }

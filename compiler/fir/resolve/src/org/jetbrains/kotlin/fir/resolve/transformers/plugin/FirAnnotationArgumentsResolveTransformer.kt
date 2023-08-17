@@ -103,6 +103,9 @@ private class FirDeclarationsResolveTransformerForArgumentAnnotations(
         return constructor
     }
 
+    override fun transformErrorConstructor(errorConstructor: FirErrorConstructor, data: ResolutionMode) =
+        transformConstructor(errorConstructor, data)
+
     override fun transformValueParameter(valueParameter: FirValueParameter, data: ResolutionMode): FirStatement {
         valueParameter
             .transformAnnotations(transformer, data)
