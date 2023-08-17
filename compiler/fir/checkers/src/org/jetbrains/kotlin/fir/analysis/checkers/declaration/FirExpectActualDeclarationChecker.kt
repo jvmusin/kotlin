@@ -264,11 +264,6 @@ object FirExpectActualDeclarationChecker : FirBasicDeclarationChecker() {
             expectSymbol, actualSymbol, matchingContext
         ) ?: return
 
-        if (actualSymbol is RegularClassSymbolMarker && (incompatibility.actualSymbol as? FirCallableSymbol<*>)?.isActual == true) {
-            // Actual members of actual class are checked separately, don't report extra diagnostic on class.
-            // It's only needed for actual typealiases or fake override members.
-            return
-        }
         reporter.reportOn(
             actualSymbol.source, FirErrors.ACTUAL_ANNOTATIONS_NOT_MATCH_EXPECT,
             incompatibility.expectSymbol as FirBasedSymbol<*>,

@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.analysis.getRetention
 import org.jetbrains.kotlin.fir.declarations.*
+import org.jetbrains.kotlin.fir.declarations.utils.isActual
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirConstExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -457,6 +458,10 @@ class FirExpectActualMatchingContextImpl private constructor(
     private fun <K, V> Map<K, V>.asMutableMap(): MutableMap<K, V> = this as MutableMap
 
     override val checkClassScopesForAnnotationCompatibility = true
+
+    override fun skipCheckingAnnotationsOfActualClassMember(actualMember: DeclarationSymbolMarker): Boolean {
+        return (actualMember.asSymbol().fir as? FirMemberDeclaration)?.isActual == true
+    }
 
     override fun findPotentialExpectClassMembersForActual(
         expectClass: RegularClassSymbolMarker,

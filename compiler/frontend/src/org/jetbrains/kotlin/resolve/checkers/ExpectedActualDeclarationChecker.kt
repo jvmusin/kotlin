@@ -495,11 +495,6 @@ class ExpectedActualDeclarationChecker(
             expectDescriptor, actualDescriptor, context
         ) ?: return
 
-        if (actualDescriptor is RegularClassSymbolMarker && (incompatibility.actualSymbol as? CallableMemberDescriptor)?.isActual == true) {
-            // Actual members of actual class are checked separately, don't report extra diagnostic on class.
-            // It's only needed for actual typealiases or fake override members.
-            return
-        }
         trace.report(
             Errors.ACTUAL_ANNOTATIONS_NOT_MATCH_EXPECT.on(
                 reportOn,

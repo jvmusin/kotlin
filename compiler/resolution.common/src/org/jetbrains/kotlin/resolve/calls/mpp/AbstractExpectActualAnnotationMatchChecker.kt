@@ -149,6 +149,9 @@ object AbstractExpectActualAnnotationMatchChecker {
         actualClass: RegularClassSymbolMarker,
     ): Incompatibility? {
         for (actualMember in actualClass.collectAllMembers(isActualDeclaration = true)) {
+            if (skipCheckingAnnotationsOfActualClassMember(actualMember)) {
+                continue
+            }
             val expectToCompatibilityMap = findPotentialExpectClassMembersForActual(expectClass, actualClass, actualMember)
             val expectMember = expectToCompatibilityMap.filter { it.value == ExpectActualCompatibility.Compatible }.keys.singleOrNull()
             // Check also incompatible members if only one is found

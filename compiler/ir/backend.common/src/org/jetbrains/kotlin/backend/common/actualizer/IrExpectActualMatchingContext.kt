@@ -511,6 +511,8 @@ internal abstract class IrExpectActualMatchingContext(
     // IR checker traverses member scope itself and collects mappings
     override val checkClassScopesForAnnotationCompatibility = false
 
+    override fun skipCheckingAnnotationsOfActualClassMember(actualMember: DeclarationSymbolMarker): Boolean = error("Should not be called")
+
     override fun findPotentialExpectClassMembersForActual(
         expectClass: RegularClassSymbolMarker,
         actualClass: RegularClassSymbolMarker,
