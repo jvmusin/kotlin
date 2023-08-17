@@ -168,7 +168,7 @@ public actual fun String.toCharArray(
     AbstractList.checkBoundsIndexes(startIndex, endIndex, length)
     val rangeSize = endIndex - startIndex
     AbstractList.checkBoundsIndexes(destinationOffset, destinationOffset + rangeSize, destination.size)
-    copyWasmArray(this.chars, destination.storage, startIndex, 0, rangeSize)
+    copyWasmArray(this.chars, destination.storage, startIndex, destinationOffset, rangeSize)
     return destination
 }
 
