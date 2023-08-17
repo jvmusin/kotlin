@@ -19,12 +19,13 @@ fun builder(c: suspend () -> Unit) {
 }
 
 fun box(): String {
+    var result = Z("Fail")
     builder {
-        val ref: KFunction<*> = ::suspendMe
-        ref.callSuspendBy(emptyMap())
-        c!!.resumeWith(Result.success(Z("OK")))
+        val ref: KFunction<Z> = ::suspendMe
+        result = ref.callSuspendBy(emptyMap())
     }
-    return "OK"
+    c!!.resumeWith(Result.success(Z("OK")))
+    return result.value
 }
 
 @JvmInline
