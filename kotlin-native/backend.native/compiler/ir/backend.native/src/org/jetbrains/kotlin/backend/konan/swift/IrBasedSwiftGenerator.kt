@@ -230,7 +230,7 @@ class IrBasedSwiftGenerator(private val moduleName: String) : IrElementVisitorVo
                     name = cName,
                     arguments = declaration.explicitParameters.map {
                         variable(mapTypeToC(it.type) ?: return, it.name.asString())
-                    } + listOfNotNull(variable(void.pointer).takeIf { hasObjHolderParameter }),
+                    } + listOfNotNull(variable(void.pointer, "returnSlot").takeIf { hasObjHolderParameter }),
                     attributes = listOf(asm(symbolName))
             ))
         })
