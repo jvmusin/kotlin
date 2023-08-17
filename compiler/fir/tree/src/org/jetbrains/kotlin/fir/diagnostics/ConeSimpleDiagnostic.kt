@@ -83,6 +83,10 @@ object ConeNoConstructorError : ConeDiagnostic {
     override val reason: String get() = "This type does not have a constructor"
 }
 
+object ConeMissingConstructorKeyword : ConeDiagnostic {
+    override val reason: String get() = "Use 'constructor' keyword after modifiers of primary constructor"
+}
+
 enum class DiagnosticKind {
     ExpressionExpected,
     NotLoopLabel,

@@ -264,6 +264,11 @@ internal class InnerOnTopLevelScriptClassWarningImpl(
     token: KtLifetimeToken,
 ) : KtAbstractFirDiagnostic<PsiElement>(firDiagnostic, token), KtFirDiagnostic.InnerOnTopLevelScriptClassWarning
 
+internal class MissingConstructorKeywordImpl(
+    firDiagnostic: KtPsiDiagnostic,
+    token: KtLifetimeToken,
+) : KtAbstractFirDiagnostic<PsiElement>(firDiagnostic, token), KtFirDiagnostic.MissingConstructorKeyword
+
 internal class InvisibleReferenceImpl(
     override val reference: KtSymbol,
     override val visible: Visibility,
