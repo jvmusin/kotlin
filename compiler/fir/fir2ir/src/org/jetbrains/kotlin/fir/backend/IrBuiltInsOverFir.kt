@@ -732,6 +732,7 @@ class IrBuiltInsOverFir(
                             isValue = isValue,
                             isExpect = isExpect,
                             isFun = isFun,
+                            hasEnumEntries = hasEnumEntries,
                         )
                     }.also {
                         it.parent = parent
@@ -812,6 +813,7 @@ class IrBuiltInsOverFir(
                     isValue = isValue,
                     isExpect = isExpect,
                     isFun = isFun,
+                    hasEnumEntries = hasEnumEntries,
                 )
             }.also {
                 it.parent = this
