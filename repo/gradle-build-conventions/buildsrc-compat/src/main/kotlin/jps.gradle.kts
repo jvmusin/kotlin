@@ -374,12 +374,16 @@ fun NamedDomainObjectContainer<TopLevelArtifact>.dist() {
         directory("common") {
             // Use output-file-name when fixed https://github.com/JetBrains/gradle-idea-ext-plugin/issues/63
             archive("kotlin-stdlib-common.jar") {
-                extractedDirectory(commonStdlib.files)
+                extractedDirectory(commonStdlib.filter {
+                    it.name.contains("stdlib")
+                }.singleFile)
             }
 
             // Use output-file-name when fixed https://github.com/JetBrains/gradle-idea-ext-plugin/issues/63
             archive("kotlin-stdlib-common-sources.jar") {
-                extractedDirectory(commonStdlibSources.files)
+                extractedDirectory(commonStdlibSources.filter {
+                    it.name.contains("stdlib")
+                }.singleFile)
             }
         }
 
