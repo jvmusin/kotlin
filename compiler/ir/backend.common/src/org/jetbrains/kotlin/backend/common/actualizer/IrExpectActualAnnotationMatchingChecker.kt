@@ -44,9 +44,7 @@ internal class IrExpectActualAnnotationMatchingChecker(
                 continue
             }
             val incompatibility = AbstractExpectActualAnnotationMatchChecker.areAnnotationsCompatible(
-                expectSymbol, actualSymbol, context,
-                // No need to traverse member scope, because everything is already in `matchedExpectToActual` map
-                AbstractExpectActualAnnotationMatchChecker.ClassMembersCheck.Disabled
+                expectSymbol, actualSymbol, context
             ) ?: continue
 
             val reportOn = getTypealiasSymbolIfActualizedViaTypealias(expectSymbol) ?: actualSymbol

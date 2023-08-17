@@ -456,6 +456,17 @@ class FirExpectActualMatchingContextImpl private constructor(
 
     private fun <K, V> Map<K, V>.asMutableMap(): MutableMap<K, V> = this as MutableMap
 
+    override val checkClassScopesForAnnotationCompatibility = true
+
+    override fun findPotentialExpectClassMembersForActual(
+        expectClass: RegularClassSymbolMarker,
+        actualClass: RegularClassSymbolMarker,
+        actualMember: DeclarationSymbolMarker,
+    ): Map<FirBasedSymbol<*>, ExpectActualCompatibility<*>> {
+        val mapping = actualClass.asSymbol().fir.memberExpectForActual
+        return mapping?.get(actualMember to expectClass) ?: emptyMap()
+    }
+
     object Factory : FirExpectActualMatchingContextFactory {
         override fun create(session: FirSession, scopeSession: ScopeSession): FirExpectActualMatchingContextImpl =
             FirExpectActualMatchingContextImpl(session, scopeSession)

@@ -491,17 +491,8 @@ class ExpectedActualDeclarationChecker(
         trace: BindingTrace
     ) {
         val context = ClassicExpectActualMatchingContext(actualDescriptor.module)
-        val expectForActualFinder = AbstractExpectActualAnnotationMatchChecker.ExpectForActualFinder { member, actualClass, expectClass ->
-            ExpectedActualResolver.findExpectForActualClassMember(
-                member as MemberDescriptor,
-                actualClass as ClassDescriptor,
-                expectClass as ClassDescriptor,
-                context,
-            )
-        }
         val incompatibility = AbstractExpectActualAnnotationMatchChecker.areAnnotationsCompatible(
-            expectDescriptor, actualDescriptor, context,
-            AbstractExpectActualAnnotationMatchChecker.ClassMembersCheck.Enabled(expectForActualFinder)
+            expectDescriptor, actualDescriptor, context
         ) ?: return
 
         if (actualDescriptor is RegularClassSymbolMarker && (incompatibility.actualSymbol as? CallableMemberDescriptor)?.isActual == true) {

@@ -28,40 +28,25 @@ object AbstractExpectActualAnnotationMatchChecker {
         val type: IncompatibilityType<ExpectActualMatchingContext.AnnotationCallInfo>,
     )
 
-    sealed class ClassMembersCheck private constructor() {
-        data object Disabled : ClassMembersCheck()
-        class Enabled(internal val expectForActualFinder: ExpectForActualFinder) : ClassMembersCheck()
-    }
-
-    fun interface ExpectForActualFinder {
-        fun findExpectForActual(
-            actualSymbol: DeclarationSymbolMarker,
-            actualClass: RegularClassSymbolMarker,
-            expectClass: RegularClassSymbolMarker,
-        ): Map<out ExpectActualCompatibility<*>, List<DeclarationSymbolMarker>>
-    }
-
     fun areAnnotationsCompatible(
         expectSymbol: DeclarationSymbolMarker,
         actualSymbol: DeclarationSymbolMarker,
         context: ExpectActualMatchingContext<*>,
-        classMembersCheckPreference: ClassMembersCheck,
     ): Incompatibility? = with(context) {
-        areAnnotationsCompatible(expectSymbol, actualSymbol, classMembersCheckPreference)
+        areAnnotationsCompatible(expectSymbol, actualSymbol)
     }
 
     context (ExpectActualMatchingContext<*>)
     private fun areAnnotationsCompatible(
         expectSymbol: DeclarationSymbolMarker,
         actualSymbol: DeclarationSymbolMarker,
-        classMembersCheckPreference: ClassMembersCheck,
     ): Incompatibility? {
         return when (expectSymbol) {
             is CallableSymbolMarker -> {
                 areCallableAnnotationsCompatible(expectSymbol, actualSymbol as CallableSymbolMarker)
             }
             is RegularClassSymbolMarker -> {
-                areClassAnnotationsCompatible(expectSymbol, actualSymbol as ClassLikeSymbolMarker, classMembersCheckPreference)
+                areClassAnnotationsCompatible(expectSymbol, actualSymbol as ClassLikeSymbolMarker)
             }
             else -> error("Incorrect types: $expectSymbol $actualSymbol")
         }
@@ -81,22 +66,17 @@ object AbstractExpectActualAnnotationMatchChecker {
     private fun areClassAnnotationsCompatible(
         expectSymbol: RegularClassSymbolMarker,
         actualSymbol: ClassLikeSymbolMarker,
-        classMembersCheckPreference: ClassMembersCheck,
     ): Incompatibility? {
         if (actualSymbol is TypeAliasSymbolMarker) {
             val expanded = actualSymbol.expandToRegularClass() ?: return null
-            return areClassAnnotationsCompatible(expectSymbol, expanded, classMembersCheckPreference)
+            return areClassAnnotationsCompatible(expectSymbol, expanded)
         }
         check(actualSymbol is RegularClassSymbolMarker)
 
         commonForClassAndCallableChecks(expectSymbol, actualSymbol)?.let { return it }
 
-        when (classMembersCheckPreference) {
-            is ClassMembersCheck.Enabled ->
-                checkAnnotationsInClassMemberScope(actualSymbol, expectSymbol, classMembersCheckPreference)
-                    ?.let { return it }
-
-            ClassMembersCheck.Disabled -> {}
+        if (checkClassScopesForAnnotationCompatibility) {
+            checkAnnotationsInClassMemberScope(expectSymbol, actualSymbol)?.let { return it }
         }
 
         return null
@@ -165,14 +145,16 @@ object AbstractExpectActualAnnotationMatchChecker {
 
     context (ExpectActualMatchingContext<*>)
     private fun checkAnnotationsInClassMemberScope(
-        actualClass: RegularClassSymbolMarker,
         expectClass: RegularClassSymbolMarker,
-        classMemberCheck: ClassMembersCheck.Enabled,
+        actualClass: RegularClassSymbolMarker,
     ): Incompatibility? {
         for (actualMember in actualClass.collectAllMembers(isActualDeclaration = true)) {
-            val expectForActualMap = classMemberCheck.expectForActualFinder.findExpectForActual(actualMember, actualClass, expectClass)
-            val expectMember = expectForActualMap[ExpectActualCompatibility.Compatible]?.singleOrNull() ?: continue
-            areAnnotationsCompatible(expectMember, actualMember, classMemberCheck)?.let { return it }
+            val expectToCompatibilityMap = findPotentialExpectClassMembersForActual(expectClass, actualClass, actualMember)
+            val expectMember = expectToCompatibilityMap.filter { it.value == ExpectActualCompatibility.Compatible }.keys.singleOrNull()
+            // Check also incompatible members if only one is found
+                ?: expectToCompatibilityMap.keys.singleOrNull()
+                ?: continue
+            areAnnotationsCompatible(expectMember, actualMember)?.let { return it }
         }
         return null
     }

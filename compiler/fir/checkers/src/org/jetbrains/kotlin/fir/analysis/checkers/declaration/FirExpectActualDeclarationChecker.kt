@@ -260,12 +260,8 @@ object FirExpectActualDeclarationChecker : FirBasicDeclarationChecker() {
         reporter: DiagnosticReporter
     ) {
         val matchingContext = context.session.expectActualMatchingContextFactory.create(context.session, context.scopeSession)
-        val expectForActualFinder = AbstractExpectActualAnnotationMatchChecker.ExpectForActualFinder { member, _, _ ->
-            (member as FirBasedSymbol<*>).expectForActual ?: emptyMap()
-        }
         val incompatibility = AbstractExpectActualAnnotationMatchChecker.areAnnotationsCompatible(
-            expectSymbol, actualSymbol, matchingContext,
-            AbstractExpectActualAnnotationMatchChecker.ClassMembersCheck.Enabled(expectForActualFinder)
+            expectSymbol, actualSymbol, matchingContext
         ) ?: return
 
         if (actualSymbol is RegularClassSymbolMarker && (incompatibility.actualSymbol as? FirCallableSymbol<*>)?.isActual == true) {

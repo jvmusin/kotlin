@@ -387,4 +387,32 @@ class ClassicExpectActualMatchingContext(
                     this !is K1SyntheticClassifierSymbolMarker &&
                     !(this is CallableMemberDescriptor && kind == CallableMemberDescriptor.Kind.SYNTHESIZED)
         }
+
+    override val checkClassScopesForAnnotationCompatibility = true
+
+    override fun findPotentialExpectClassMembersForActual(
+        expectClass: RegularClassSymbolMarker,
+        actualClass: RegularClassSymbolMarker,
+        actualMember: DeclarationSymbolMarker,
+    ): Map<MemberDescriptor, ExpectActualCompatibility<*>> {
+        val compatibilityToExpects = ExpectedActualResolver.findExpectForActualClassMember(
+            actualMember as MemberDescriptor,
+            actualClass as ClassDescriptor,
+            expectClass as ClassDescriptor,
+            this,
+        )
+        return buildMap {
+            for ((compatibility, expectMembers) in compatibilityToExpects.entries) {
+                for (expectMember in expectMembers) {
+                    val oldValue = put(expectMember, compatibility)
+                    if (oldValue != null) {
+                        error(
+                            "Several incompatibilities correspond to the same expect symbol: symbol=$expectMember, " +
+                                    "compatibilities=$oldValue, $compatibility"
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

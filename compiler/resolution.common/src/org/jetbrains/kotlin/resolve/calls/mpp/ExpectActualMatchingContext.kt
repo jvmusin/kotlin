@@ -189,4 +189,12 @@ interface ExpectActualMatchingContext<T : DeclarationSymbolMarker> : TypeSystemC
         val isRetentionSource: Boolean
         val isOptIn: Boolean
     }
+
+    val checkClassScopesForAnnotationCompatibility: Boolean
+
+    fun findPotentialExpectClassMembersForActual(
+        expectClass: RegularClassSymbolMarker,
+        actualClass: RegularClassSymbolMarker,
+        actualMember: DeclarationSymbolMarker,
+    ): Map<out DeclarationSymbolMarker, ExpectActualCompatibility<*>>
 }
