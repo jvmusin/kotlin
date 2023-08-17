@@ -119,6 +119,8 @@ private class LLFirBodyTargetResolver(
             is FirFile -> {
                 if (target.resolvePhase >= resolverPhase) return true
 
+                resolveFileAnnotationContainerIfNeeded(target)
+
                 // resolve file CFG graph here, to do this we need to have property blocks resoled
                 resolveMembersForControlFlowGraph(target)
                 performCustomResolveUnderLock(target) {
@@ -233,8 +235,7 @@ private class LLFirBodyTargetResolver(
 
     override fun doLazyResolveUnderLock(target: FirElementWithResolveState) {
         when (target) {
-            is FirFile -> error("Should have been resolved in ${::doResolveWithoutLock.name}")
-            is FirRegularClass, is FirCodeFragment -> error("Should have been resolved in ${::doResolveWithoutLock.name}")
+            is FirFile, is FirRegularClass, is FirCodeFragment -> error("Should have been resolved in ${::doResolveWithoutLock.name}")
             is FirConstructor -> resolve(target, BodyStateKeepers.CONSTRUCTOR)
             is FirFunction -> resolve(target, BodyStateKeepers.FUNCTION)
             is FirProperty -> resolve(target, BodyStateKeepers.PROPERTY)

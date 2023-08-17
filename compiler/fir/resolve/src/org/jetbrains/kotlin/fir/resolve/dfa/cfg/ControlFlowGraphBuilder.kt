@@ -383,7 +383,7 @@ class ControlFlowGraphBuilder {
 
     fun enterFile(file: FirFile, buildGraph: Boolean): FileEnterNode? {
         if (!buildGraph) {
-            graphs.push(ControlFlowGraph(null, "<discarded file graph>", ControlFlowGraph.Kind.File))
+            graphs.push(ControlFlowGraph(declaration = null, "<discarded file graph>", ControlFlowGraph.Kind.File))
             return null
         }
 
@@ -392,7 +392,7 @@ class ControlFlowGraphBuilder {
         }
     }
 
-     fun exitFile(): Pair<FileExitNode?, ControlFlowGraph?> {
+    fun exitFile(): Pair<FileExitNode?, ControlFlowGraph?> {
         assert(currentGraph.kind == ControlFlowGraph.Kind.File)
         if (currentGraph.declaration == null) {
             graphs.pop() // Discard empty file graph.
@@ -405,7 +405,7 @@ class ControlFlowGraphBuilder {
         val exitNode = currentGraph.exitNode as FileExitNode
 
         val properties = mutableListOf<ControlFlowGraph>()
-        enterNode.fir.forEachGraphOwner {
+        enterNode.fir.declarations.forEachGraphOwner {
             val graph = it.controlFlowGraphReference?.controlFlowGraph ?: return@forEachGraphOwner
             if (it is FirProperty) properties.add(graph)
         }
@@ -431,21 +431,8 @@ class ControlFlowGraphBuilder {
     private fun FirClass.firstInPlaceInitializedMember(): FirDeclaration? =
         declarations.find { it is FirControlFlowGraphOwner && it !is FirConstructor && it.isUsedInControlFlowGraphBuilderForClass }
 
-    private inline fun FirClass.forEachGraphOwner(block: (FirControlFlowGraphOwner) -> Unit) {
-        for (member in declarations) {
-            if (member is FirControlFlowGraphOwner && member.memberShouldHaveGraph) {
-                block(member)
-            }
-
-            if (member is FirProperty) {
-                member.getter?.let { block(it) }
-                member.setter?.let { block(it) }
-            }
-        }
-    }
-
-    private inline fun FirFile.forEachGraphOwner(block: (FirControlFlowGraphOwner) -> Unit) {
-        for (member in declarations) {
+    private inline fun List<FirElement>.forEachGraphOwner(block: (FirControlFlowGraphOwner) -> Unit) {
+        for (member in this) {
             if (member is FirControlFlowGraphOwner && member.memberShouldHaveGraph) {
                 block(member)
             }
@@ -463,7 +450,7 @@ class ControlFlowGraphBuilder {
 
     fun enterClass(klass: FirClass, buildGraph: Boolean): Pair<CFGNode<*>?, ClassEnterNode?> {
         if (!buildGraph) {
-            graphs.push(ControlFlowGraph(null, "<discarded class graph>", ControlFlowGraph.Kind.Class))
+            graphs.push(ControlFlowGraph(declaration = null, "<discarded class graph>", ControlFlowGraph.Kind.Class))
             return null to null
         }
 
@@ -492,7 +479,7 @@ class ControlFlowGraphBuilder {
 
         if (enterNode.previousNodes.isNotEmpty()) {
             val firstInPlace = klass.firstInPlaceInitializedMember()
-            klass.forEachGraphOwner {
+            klass.declarations.forEachGraphOwner {
                 // For local classes, the first in-place initializer, all constructors when there are no in-place initializers, or any
                 // this-delegating constructors should have a forward edge from ClassEnterNode, while everything else should have a
                 // DFG-only forward edge.
@@ -529,7 +516,7 @@ class ControlFlowGraphBuilder {
         val calledInPlace = mutableListOf<ControlFlowGraph>()
         val calledLater = mutableListOf<ControlFlowGraph>()
         val constructors = mutableMapOf<FirConstructor, ControlFlowGraph>()
-        klass.forEachGraphOwner {
+        klass.declarations.forEachGraphOwner {
             val graph = it.controlFlowGraphReference?.controlFlowGraph ?: return@forEachGraphOwner
             when (it) {
                 is FirConstructor -> constructors[it] = graph
