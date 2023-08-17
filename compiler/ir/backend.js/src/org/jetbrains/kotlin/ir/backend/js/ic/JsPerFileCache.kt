@@ -13,6 +13,8 @@ import org.jetbrains.kotlin.utils.addToStdlib.butIf
 import org.jetbrains.kotlin.utils.addToStdlib.runIf
 import java.io.File
 
+typealias CachedTestFunctionsWithTheirPackage = Map<String, List<String>>
+
 class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMultiArtifactCache<JsPerFileCache.CachedFileInfo>() {
     companion object {
         private const val JS_MODULE_HEADER = "js.module.header.bin"
@@ -42,6 +44,8 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
 
         class MainFileCachedInfo(moduleArtifact: ModuleArtifact, fileArtifact: SrcFileArtifact, moduleHeader: JsIrModuleHeader? = null) :
             SerializableCachedFileInfo(moduleArtifact, fileArtifact, moduleHeader) {
+            var testFunction: String? = null
+            var suiteFunction: String? = null
             var exportFileCachedInfo: ExportFileCachedInfo? = null
 
             val jsFileArtifact by lazy(LazyThreadSafetyMode.NONE) { getArtifactWithName(CACHED_FILE_JS) }
@@ -61,6 +65,10 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
 
         class ModuleProxyFileCachedInfo(moduleArtifact: ModuleArtifact, moduleHeader: JsIrModuleHeader? = null) :
             CachedFileInfo(moduleArtifact, moduleHeader) {
+            var suiteFunction: String? = null
+            var packagesToItsTestFunctions: CachedTestFunctionsWithTheirPackage? = null
+            val testFunctionsHash: ICHash? get() = packagesToItsTestFunctions?.testFunctionsHashForIC()
+
             val jsFileArtifact by lazy(LazyThreadSafetyMode.NONE) { getArtifactWithName(CACHED_FILE_JS) }
             val dtsFileArtifact by lazy(LazyThreadSafetyMode.NONE) { getArtifactWithName(CACHED_FILE_D_TS) }
             val moduleHeaderArtifact by lazy(LazyThreadSafetyMode.NONE) { getArtifactWithName(JS_MODULE_HEADER) }
@@ -86,16 +94,15 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
             nameBindings = nameBindings.mapValues { v -> v.value.toString() },
             optionalCrossModuleImports = optionalCrossModuleImports,
             reexportedInModuleWithName = reexportedIn,
-            associatedModule = null
+            associatedModule = JsIrModule(moduleName, moduleName, listOf(this), reexportedIn)
         )
     }
 
-    private fun SrcFileArtifact.loadJsIrModuleHeaders(moduleArtifact: ModuleArtifact) = with(loadJsIrFragments()) {
+    private fun List<JsIrProgramFragment>.loadJsIrModuleHeaders(moduleArtifact: ModuleArtifact) =
         LoadedJsIrModuleHeaders(
             mainFragment.run { asIrModuleHeader(getMainFragmentExternalName(moduleArtifact)) },
             exportFragment?.run { asIrModuleHeader(mainFragment.getExportFragmentExternalName(moduleArtifact), moduleArtifact.moduleExternalName) },
         )
-    }
 
     private fun <T : CachedFileInfo> CodedInputStream.loadSingleCachedFileInfo(cachedFileInfo: T): T = cachedFileInfo.also {
         val moduleName = readString()
@@ -103,9 +110,19 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
 
         it.crossFileReferencesHash = ICHash.fromProtoStream(this)
 
-        if (it is CachedFileInfo.ExportFileCachedInfo) {
-            it.tsDeclarationsHash = runIf(readBool()) { readInt64() }
-            reexportedIn = cachedFileInfo.moduleArtifact.moduleExternalName
+        when (it) {
+            is CachedFileInfo.MainFileCachedInfo -> {
+                it.testFunction = runIf(readBool()) { readString() }
+                it.suiteFunction = runIf(readBool()) { readString() }
+            }
+            is CachedFileInfo.ExportFileCachedInfo -> {
+                it.tsDeclarationsHash = runIf(readBool()) { readInt64() }
+                reexportedIn = cachedFileInfo.moduleArtifact.moduleExternalName
+            }
+            is CachedFileInfo.ModuleProxyFileCachedInfo -> {
+                it.suiteFunction = ifTrue { readString() }
+                it.packagesToItsTestFunctions = loadTestFunctions()
+            }
         }
 
         val (definitions, nameBindings, optionalCrossModuleImports) = fetchJsIrModuleHeaderNames()
@@ -119,6 +136,14 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
             reexportedInModuleWithName = reexportedIn,
             associatedModule = null,
         )
+    }
+
+    private fun CodedInputStream.loadTestFunctions() = buildMap {
+        repeat(readInt32()) {
+            put(readString(), buildList {
+                repeat(readInt32()) { add(readString()) }
+            })
+        }
     }
 
     private fun <T> CachedFileInfo.MainFileCachedInfo.readModuleHeaderCache(f: CodedInputStream.() -> T): T? =
@@ -138,7 +163,9 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
 
     private fun ModuleArtifact.fetchModuleProxyFileInfo(): CachedFileInfo.ModuleProxyFileCachedInfo? {
         val mainFileCachedFileInfo = CachedFileInfo.ModuleProxyFileCachedInfo(this)
-        return mainFileCachedFileInfo.moduleHeaderArtifact?.useCodedInputIfExists { loadSingleCachedFileInfo(mainFileCachedFileInfo) }
+        return mainFileCachedFileInfo.moduleHeaderArtifact?.useCodedInputIfExists {
+            loadSingleCachedFileInfo(mainFileCachedFileInfo)
+        }
     }
 
     private fun CodedInputStream.fetchFileInfoForExportedPart(mainCachedFileInfo: CachedFileInfo.MainFileCachedInfo): CachedFileInfo.ExportFileCachedInfo? {
@@ -152,10 +179,23 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
     private fun CodedOutputStream.commitSingleFileInfo(cachedFileInfo: CachedFileInfo.SerializableCachedFileInfo) {
         writeStringNoTag(cachedFileInfo.jsIrHeader.externalModuleName)
         cachedFileInfo.crossFileReferencesHash.toProtoStream(this)
-        if (cachedFileInfo is CachedFileInfo.ExportFileCachedInfo) {
-            ifNotNull(cachedFileInfo.tsDeclarationsHash, ::writeInt64NoTag)
+        when (cachedFileInfo) {
+            is CachedFileInfo.MainFileCachedInfo -> {
+                ifNotNull(cachedFileInfo.testFunction, ::writeStringNoTag)
+                ifNotNull(cachedFileInfo.suiteFunction, ::writeStringNoTag)
+            }
+            is CachedFileInfo.ExportFileCachedInfo -> ifNotNull(cachedFileInfo.tsDeclarationsHash, ::writeInt64NoTag)
         }
         commitJsIrModuleHeaderNames(cachedFileInfo.jsIrHeader)
+    }
+
+    private fun CodedOutputStream.writeTestFunctions(cachedTestFunctionsWithTheirPackage: CachedTestFunctionsWithTheirPackage) {
+        writeInt32NoTag(cachedTestFunctionsWithTheirPackage.size)
+        cachedTestFunctionsWithTheirPackage.forEach { (key, value) ->
+            writeStringNoTag(key)
+            writeInt32NoTag(value.size)
+            value.forEach(::writeStringNoTag)
+        }
     }
 
     private fun CachedFileInfo.commitFileInfo() = when (this) {
@@ -169,26 +209,47 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
             moduleHeaderArtifact?.useCodedOutput {
                 writeStringNoTag(jsIrHeader.externalModuleName)
                 crossFileReferencesHash.toProtoStream(this)
+                ifNotNull(suiteFunction, ::writeStringNoTag)
+                ifNotNull(packagesToItsTestFunctions) { writeTestFunctions(it) }
                 commitJsIrModuleHeaderNames(jsIrHeader)
             }
         }
         is CachedFileInfo.ExportFileCachedInfo -> {}
     }
 
-    private fun ModuleArtifact.generateModuleProxyFileCachedInfo(): CachedFileInfo {
+    private fun ModuleArtifact.generateModuleProxyFileCachedInfo(
+        suiteFunction: String?,
+        cachedTestFunctionsWithTheirPackage: CachedTestFunctionsWithTheirPackage?
+    ): CachedFileInfo {
         return CachedFileInfo.ModuleProxyFileCachedInfo(
             this,
-            generateProxyIrModuleWith(moduleExternalName, moduleExternalName).makeModuleHeader()
-        )
+            generateProxyIrModuleWith(
+                moduleExternalName,
+                moduleExternalName,
+                suiteFunction,
+                cachedTestFunctionsWithTheirPackage
+            ).makeModuleHeader()
+        ).also {
+            it.suiteFunction = suiteFunction
+            it.packagesToItsTestFunctions = cachedTestFunctionsWithTheirPackage
+        }
     }
 
     private fun ModuleArtifact.loadFileInfoFor(fileArtifact: SrcFileArtifact): List<CachedFileInfo> {
-        val headers = fileArtifact.loadJsIrModuleHeaders(this)
+        val programFragments = fileArtifact.loadJsIrFragments()
+        val headers = programFragments.loadJsIrModuleHeaders(this)
+        val mainFragment = programFragments.mainFragment
 
-        val mainCachedFileInfo = CachedFileInfo.MainFileCachedInfo(this, fileArtifact, headers.mainHeader)
+        val mainCachedFileInfo = CachedFileInfo.MainFileCachedInfo(this, fileArtifact, headers.mainHeader).apply {
+            testFunction = mainFragment.testFunction
+            suiteFunction = mainFragment.suiteFunction
+
+            mainFragment.testFunction = null
+            mainFragment.suiteFunction = null
+        }
 
         if (headers.exportHeader != null) {
-            val tsDeclarationsHash = fileArtifact.loadJsIrFragments().exportFragment?.dts?.raw?.cityHash64()
+            val tsDeclarationsHash = programFragments.exportFragment?.dts?.raw?.cityHash64()
             val cachedExportFileInfo = mainCachedFileInfo.readModuleHeaderCache { fetchFileInfoForExportedPart(mainCachedFileInfo) }
             mainCachedFileInfo.exportFileCachedInfo = if (cachedExportFileInfo?.tsDeclarationsHash != tsDeclarationsHash) {
                 CachedFileInfo.ExportFileCachedInfo(
@@ -228,25 +289,36 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
             compilationOutputs.writeJsCodeIntoModuleCache(jsCodeFile, jsMapFile)
         } ?: compilationOutputs
 
-    override fun loadJsIrModule(cacheInfo: CachedFileInfo): JsIrModule {
-        if (cacheInfo !is CachedFileInfo.SerializableCachedFileInfo) {
-            return generateProxyIrModuleWith(cacheInfo.jsIrHeader.externalModuleName, cacheInfo.jsIrHeader.externalModuleName)
+    override fun loadJsIrModule(cacheInfo: CachedFileInfo): JsIrModule =
+        when (cacheInfo) {
+            is CachedFileInfo.ModuleProxyFileCachedInfo -> generateProxyIrModuleWith(
+                cacheInfo.jsIrHeader.externalModuleName,
+                cacheInfo.jsIrHeader.externalModuleName,
+                cacheInfo.suiteFunction,
+                cacheInfo.packagesToItsTestFunctions
+            )
+            is CachedFileInfo.SerializableCachedFileInfo -> {
+                val fragments = cacheInfo.fileArtifact.loadJsIrFragments().also {
+                    it.mainFragment.testFunction = null
+                    it.mainFragment.suiteFunction = null
+                }
+                val isExportFileCachedInfo = cacheInfo is CachedFileInfo.ExportFileCachedInfo
+                JsIrModule(
+                    cacheInfo.jsIrHeader.moduleName,
+                    cacheInfo.jsIrHeader.externalModuleName,
+                    listOf(if (isExportFileCachedInfo) fragments.exportFragment!! else fragments.mainFragment),
+                    runIf(isExportFileCachedInfo) { cacheInfo.moduleArtifact.moduleSafeName }
+                )
+            }
         }
-
-        val fragments = cacheInfo.fileArtifact.loadJsIrFragments()
-        val isExportFileCachedInfo = cacheInfo is CachedFileInfo.ExportFileCachedInfo
-        return JsIrModule(
-            cacheInfo.jsIrHeader.moduleName,
-            cacheInfo.jsIrHeader.externalModuleName,
-            listOf(if (isExportFileCachedInfo) fragments.exportFragment!! else fragments.mainFragment),
-            runIf(isExportFileCachedInfo) { cacheInfo.moduleArtifact.moduleSafeName }
-        )
-    }
 
     override fun loadProgramHeadersFromCache(): List<CachedFileInfo> {
         return moduleArtifacts
             .flatMap { moduleArtifact ->
                 var hasFileWithJsExportedDeclaration = false
+                var suiteFunction: String? = null
+                val testFunctions = mutableMapOf<String, MutableList<String>>()
+
                 moduleArtifact.fileArtifacts
                     .flatMap { srcFileArtifact ->
                         val cachedFileInfo = if (srcFileArtifact.isModified())
@@ -258,10 +330,27 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
                             hasFileWithJsExportedDeclaration = true
                         }
 
+                        val mainFileInfo = cachedFileInfo.last() as? CachedFileInfo.MainFileCachedInfo
+                        val testFunction = mainFileInfo?.testFunction
+
+                        if (testFunction != null) {
+                            val packageFqn = mainFileInfo.packageFqn
+                            val testFunctionsList = testFunctions.getOrPut(packageFqn) { mutableListOf() }
+                            testFunctionsList.add(testFunction)
+                            suiteFunction = mainFileInfo.suiteFunction
+                        }
+
                         cachedFileInfo
                     }
-                    .butIf(hasFileWithJsExportedDeclaration) {
-                        it.plus(moduleArtifact.fetchModuleProxyFileInfo() ?: moduleArtifact.generateModuleProxyFileCachedInfo())
+                    .butIf(hasFileWithJsExportedDeclaration || suiteFunction != null) { fileInfoList ->
+                        val fetchedProxyFileInfo = moduleArtifact.fetchModuleProxyFileInfo()
+                        val proxyFileCachedInfo = if (
+                            suiteFunction != fetchedProxyFileInfo?.suiteFunction ||
+                            fetchedProxyFileInfo?.testFunctionsHash != testFunctions.testFunctionsHashForIC()
+                        ) {
+                            moduleArtifact.generateModuleProxyFileCachedInfo(suiteFunction, testFunctions.takeIf { it.isNotEmpty() })
+                        } else fetchedProxyFileInfo
+                        fileInfoList.plus(proxyFileCachedInfo)
                     }
             }
             .onEach { headerToCachedInfo[it.jsIrHeader] = it }
@@ -288,4 +377,5 @@ class JsPerFileCache(private val moduleArtifacts: List<ModuleArtifact>) : JsMult
     private data class LoadedJsIrModuleHeaders(val mainHeader: JsIrModuleHeader, val exportHeader: JsIrModuleHeader?)
 
     private fun List<JsPerFileCache.CachedFileInfo>.hasExportFile(): Boolean = size > 1
+    private val CachedFileInfo.packageFqn: String get() = moduleFragmentToExternalName.getPackageFqn(jsIrHeader.moduleName)
 }

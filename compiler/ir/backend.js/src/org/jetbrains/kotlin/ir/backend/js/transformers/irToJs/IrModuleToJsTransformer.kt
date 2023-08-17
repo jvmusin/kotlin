@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.serialization.checkIsFunctionInterfac
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.ir.backend.js.*
 import org.jetbrains.kotlin.ir.backend.js.export.*
+import org.jetbrains.kotlin.ir.backend.js.ic.CachedTestFunctionsWithTheirPackage
 import org.jetbrains.kotlin.ir.backend.js.lower.JsCodeOutliningLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.StaticMembersLowering
 import org.jetbrains.kotlin.ir.backend.js.lower.isBuiltInClass
@@ -47,11 +48,26 @@ val String.safeModuleName: String
 val IrModuleFragment.safeName: String
     get() = name.asString().safeModuleName
 
-fun generateProxyIrModuleWith(safeName: String, externalName: String) = JsIrModule(
-    safeName,
-    externalName,
-    listOf(JsIrProgramFragment(safeName, "<proxy-file>"))
-)
+fun generateProxyIrModuleWith(
+    safeName: String,
+    externalName: String,
+    suiteFunction: String? = null,
+    cachedTestFunctionsWithTheirPackage: CachedTestFunctionsWithTheirPackage? = null
+): JsIrModule {
+    val programFragment = JsIrProgramFragment(safeName, "<proxy-file>").apply {
+        if (cachedTestFunctionsWithTheirPackage != null) {
+            nameBindings += cachedTestFunctionsWithTheirPackage.values.asSequence()
+                .flatten()
+                .map { it to JsName("test", true) }
+                .plus(suiteFunction!! to JsName("suite", true))
+
+            JsTestFunctionTransformer.generateTestFunctionCall(
+                cachedTestFunctionsWithTheirPackage.asTestFunctionContainers(suiteFunction, nameBindings)
+            )?.let { declarations.statements += it.makeStmt() }
+        }
+    }
+    return JsIrModule(safeName, externalName, listOf(programFragment))
+}
 
 enum class JsGenerationGranularity {
     WHOLE_PROGRAM,
@@ -267,21 +283,31 @@ class IrModuleToJsTransformer(
         val modulesPerFile = buildList {
             for (module in exportData) {
                 var hasFileWithJsExportedDeclaration = false
+                var suiteFunction: String? = null
+                val testFunctions = mutableMapOf<String, MutableList<String>>()
 
                 for (fileExports in module.files) {
                     if (fileExports.file.couldBeSkipped()) continue
                     val programFragments = generateProgramFragment(fileExports, mode)
+                    val mainFragment = programFragments.mainFragment
 
-                    add(fileExports.toJsIrModule(programFragments.mainFragment))
+                    add(fileExports.toJsIrModule(mainFragment))
 
                     programFragments.exportFragment?.let {
                         add(fileExports.toJsIrModuleForExport(module, it))
                         hasFileWithJsExportedDeclaration = true
                     }
+
+                    mainFragment.testFunction?.let {
+                        suiteFunction = mainFragment.suiteFunction
+                        testFunctions.getOrPut(mainFragment.packageFqn, ::mutableListOf).add(it)
+                        mainFragment.testFunction = null
+                        mainFragment.suiteFunction = null
+                    }
                 }
 
-                if (hasFileWithJsExportedDeclaration) {
-                    add(module.toJsIrProxyModule())
+                if (hasFileWithJsExportedDeclaration || suiteFunction != null) {
+                    add(module.toJsIrProxyModule(suiteFunction, testFunctions))
                 }
             }
         }
@@ -306,10 +332,12 @@ class IrModuleToJsTransformer(
         )
     }
 
-    private fun IrAndExportedDeclarations.toJsIrProxyModule(): JsIrModule {
+    private fun IrAndExportedDeclarations.toJsIrProxyModule(suiteFunction: String?, cachedTestFunctionsWithTheirPackage: CachedTestFunctionsWithTheirPackage?): JsIrModule {
         return generateProxyIrModuleWith(
             fragment.safeName,
             moduleFragmentToNameMapper.getExternalNameFor(fragment),
+            suiteFunction,
+            cachedTestFunctionsWithTheirPackage
         )
     }
 
@@ -401,14 +429,14 @@ class IrModuleToJsTransformer(
             }
         }
 
-        backendContext.testFunsPerFile[fileExports.file]?.let {
-            result.testFunInvocation = JsInvocation(staticContext.getNameForStaticFunction(it).makeRef()).makeStmt()
-            result.suiteFn = staticContext.getNameForStaticFunction(backendContext.suiteFun!!.owner)
-        }
-
         result.importedModules += nameGenerator.importedModules
 
         val definitionSet = fileExports.file.declarations.toSet()
+
+        backendContext.testFunsPerFile[fileExports.file]?.let {
+            result.testFunction = definitionSet.computeTag(it)
+            result.suiteFunction = definitionSet.computeTag(backendContext.suiteFun!!.owner)
+        }
 
         result.computeAndSaveNameBindings(definitionSet, nameGenerator)
         result.computeAndSaveImports(definitionSet, nameGenerator)
