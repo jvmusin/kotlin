@@ -88,7 +88,7 @@ class FirCallCompleter(
                     runCompletionForCall(candidate, completionMode, call, initialType, analyzer)
                     val finalSubstitutor = candidate.system.asReadOnlyStorage()
                         .buildAbstractResultingSubstitutor(session.typeContext) as ConeSubstitutor
-                    val completedCall = call.transformSingle(
+                    @Suppress("UNCHECKED_CAST") val completedCall = (call as FirElement).transformSingle(
                         FirCallCompletionResultsWriterTransformer(
                             session, finalSubstitutor,
                             components.returnTypeCalculator,
@@ -98,7 +98,7 @@ class FirCallCompleter(
                             components.context
                         ),
                         null
-                    )
+                    ) as T
                     inferenceSession.addCompletedCall(completedCall, candidate)
                     completedCall
                 } else {
