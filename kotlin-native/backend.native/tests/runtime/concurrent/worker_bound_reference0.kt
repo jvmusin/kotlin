@@ -9,6 +9,7 @@ package runtime.concurrent.worker_bound_reference0
 import kotlin.test.*
 
 import kotlin.concurrent.AtomicInt
+import kotlin.concurrent.AtomicReference
 import kotlin.native.concurrent.*
 import kotlin.native.*
 import kotlin.native.ref.WeakReference
@@ -433,9 +434,9 @@ fun testLocalAccessWithWrapperFrozen() {
     worker.requestTermination().result
 }
 
-fun getOwnerAndWeaks(initial: Int): Triple<FreezableAtomicReference<WorkerBoundReference<A>?>, WeakReference<WorkerBoundReference<A>>, WeakReference<A>> {
+fun getOwnerAndWeaks(initial: Int): Triple<AtomicReference<WorkerBoundReference<A>?>, WeakReference<WorkerBoundReference<A>>, WeakReference<A>> {
     val ref = WorkerBoundReference(A(initial))
-    val refOwner: FreezableAtomicReference<WorkerBoundReference<A>?> = FreezableAtomicReference(ref)
+    val refOwner: AtomicReference<WorkerBoundReference<A>?> = AtomicReference(ref)
     val refWeak = WeakReference(ref)
     val refValueWeak = WeakReference(ref.value)
 
@@ -557,9 +558,9 @@ class B1 {
 
 data class B2(val b1: WorkerBoundReference<B1>)
 
-fun createCyclicGarbage(): Triple<FreezableAtomicReference<WorkerBoundReference<B1>?>, WeakReference<B1>, WeakReference<B2>> {
+fun createCyclicGarbage(): Triple<AtomicReference<WorkerBoundReference<B1>?>, WeakReference<B1>, WeakReference<B2>> {
     val ref1 = WorkerBoundReference(B1())
-    val ref1Owner: FreezableAtomicReference<WorkerBoundReference<B1>?> = FreezableAtomicReference(ref1)
+    val ref1Owner: AtomicReference<WorkerBoundReference<B1>?> = AtomicReference(ref1)
     val ref1Weak = WeakReference(ref1.value)
 
     val ref2 = WorkerBoundReference(B2(ref1))
