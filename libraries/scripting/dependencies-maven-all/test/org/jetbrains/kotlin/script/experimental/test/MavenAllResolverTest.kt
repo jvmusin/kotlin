@@ -13,7 +13,7 @@ import kotlin.script.experimental.dependencies.maven.MavenDependenciesResolver
 class MavenAllResolverTest {
 
     @Test
-    fun testProgardedApiWithDefaultValues() {
+    fun testProguardedApiWithDefaultValues() {
         // tests that API methods with default values are accessible with proguarded jar, see KT-60862 for details
 
         data class Repository(val id: String, val url: String, val user: String = "", val password: String = "")
